@@ -1,7 +1,9 @@
 # CMake below 3.4 does not work with CUDA separable compilation at all
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.10)
 
 project(PopSift VERSION 1.0.0)
+
+enable_language(CXX CUDA C)
 
 OPTION(PopSift_BUILD_EXAMPLES "Build PopSift applications."  ON)
 OPTION(PopSift_USE_NVTX_PROFILING     "Use CUDA NVTX for profiling." OFF)
@@ -40,14 +42,20 @@ else()
   message(STATUS "Building in ${CMAKE_BUILD_TYPE} configuration")
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-set(CMAKE_C_FLAGS_RELEASE   "${CMAKE_C_FLAGS_RELEASE}   -O3")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -G")
-# set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG}   -G")
+#
+# RPATH handling
+#
+set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+if("${isSystemDir}" STREQUAL "-1")
+   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
 
 find_package(Boost 1.53.0 REQUIRED COMPONENTS system thread)
 if(WIN32)
@@ -58,21 +66,26 @@ endif(WIN32)
 
 if(BUILD_SHARED_LIBS)
   message(STATUS "BUILD_SHARED_LIBS ON")
-  # Need to declare CUDA_USE_STATIC_CUDA_RUNTIME as an option to ensure that it is not overwritten in FindCUDA.
+  # Need to declare CUDA_USE_STATIC_CUDA_RUNTIME as an option
+  # to ensure that it is not overwritten in FindCUDA.
   option(CUDA_USE_STATIC_CUDA_RUNTIME "Use the static version of the CUDA runtime library if available" OFF)
   set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+
   # Workaround to force deactivation of cuda static runtime for cmake < 3.10
   set(CUDA_cudart_static_LIBRARY 0)
+
+  # libcudart is initialized once for each shared library unless this is used
+  string(APPEND CMAKE_CUDA_FLAGS " --cudart shared")
+
   # Auto-build dll exports on Windows
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  list(APPEND CUDA_NVCC_FLAGS --cudart shared)
 else()
   message(STATUS "BUILD_SHARED_LIBS OFF")
   option(CUDA_USE_STATIC_CUDA_RUNTIME "Use the static version of the CUDA runtime library if available" ON)
   set(CUDA_USE_STATIC_CUDA_RUNTIME ON)
 endif()
 
-find_package(CUDA 7.0 REQUIRED)
+find_package(CUDA 8.0 REQUIRED)
 
 if(NOT CUDA_FOUND)
   message(FATAL_ERROR "Could not find CUDA >= 7.0")
@@ -95,17 +108,19 @@ endif()
 
 if(PopSift_ERRCHK_AFTER_KERNEL)
   message(STATUS "Synchronizing and checking errors after every kernel call")
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-DERRCHK_AFTER_KERNEL")
+  string(APPEND CMAKE_CUDA_FLAGS " -DERRCHK_AFTER_KERNEL")
 endif()
 
 set(CUDA_SEPARABLE_COMPILATION ON)
 
+string(APPEND CMAKE_CUDA_FLAGS " -rdc true")
+
 if(UNIX AND NOT APPLE)
-  set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};-Xcompiler;-rdynamic;-lineinfo")
-  # set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};-Xptxas;-v")
-  # set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};-Xptxas;-warn-double-usage")
-  set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};--keep")
-  set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};--source-in-ptx")
+  string(APPEND CMAKE_CUDA_FLAGS_DEBUG " -Xcompiler;-rdynamic;-lineinfo")
+  # string(APPEND CMAKE_CUDA_FLAGS " -Xptxas;-v")
+  # string(APPEND CMAKE_CUDA_FLAGS " -Xptxas;-warn-double-usage")
+  string(APPEND CMAKE_CUDA_FLAGS_DEBUG " --keep")
+  string(APPEND CMAKE_CUDA_FLAGS_DEBUG " --source-in-ptx")
 endif()
 
 # The following if should not be necessary, but apparently there is a bug in FindCUDA.cmake that
@@ -113,20 +128,20 @@ endif()
 # see https://gitlab.kitware.com/cmake/cmake/issues/16411
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   message(STATUS "Building in debug mode")
-  set(CUDA_NVCC_FLAGS_DEBUG   "${CUDA_NVCC_FLAGS_DEBUG};-G")
+  # string(APPEND CMAKE_CUDA_FLAGS_DEBUG " -G")
 endif()
-set(CUDA_NVCC_FLAGS_RELEASE "${CUDA_NVCC_FLAGS_RELEASE};-O3")
+# string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -O3")
 
-if(PopSift_USE_POSITION_INDEPENDENT_CODE)
-  set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};-Xcompiler;-fPIC")
-endif()
+# if(PopSift_USE_POSITION_INDEPENDENT_CODE)
+#   string(APPEND CMAKE_CUDA_FLAGS " -Xcompiler;-fPIC")
+# endif()
 
 #
 # Add all requested CUDA CCs to the command line for offline compilation
 #
 list(SORT PopSift_CUDA_CC_LIST)
 foreach(PopSift_CC_VERSION ${PopSift_CUDA_CC_LIST})
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-gencode;arch=compute_${PopSift_CC_VERSION},code=sm_${PopSift_CC_VERSION}")
+  string(APPEND CMAKE_CUDA_FLAGS " -gencode arch=compute_${PopSift_CC_VERSION},code=sm_${PopSift_CC_VERSION}")
 endforeach()
 
 #
@@ -135,32 +150,30 @@ endforeach()
 list(LENGTH PopSift_CUDA_CC_LIST PopSift_CC_LIST_LEN)
 MATH(EXPR PopSift_CC_LIST_LEN "${PopSift_CC_LIST_LEN}-1")
 list(GET PopSift_CUDA_CC_LIST ${PopSift_CC_LIST_LEN} PopSift_CUDA_CC_LIST_LAST)
-set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};-gencode;arch=compute_${PopSift_CUDA_CC_LIST_LAST},code=compute_${PopSift_CUDA_CC_LIST_LAST}")
+string(APPEND CMAKE_CUDA_FLAGS " -gencode arch=compute_${PopSift_CUDA_CC_LIST_LAST},code=compute_${PopSift_CUDA_CC_LIST_LAST}")
 
 # default stream legacy implies that the 0 stream synchronizes all streams
 # default stream per-thread implies that each host thread has one non-synchronizing 0-stream
 # currently, the code requires legacy mode
-set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};--default-stream;legacy")
-# set(CUDA_NVCC_FLAGS         "${CUDA_NVCC_FLAGS};--default-stream;per-thread")
+string(APPEND CMAKE_CUDA_FLAGS " --default-stream legacy")
+# string(APPEND CMAKE_CUDA_FLAGS " --default-stream per-thread")
 
 message(STATUS "CUDA Version is ${CUDA_VERSION}")
 message(STATUS "Compiling for CUDA CCs: ${PopSift_CUDA_CC_LIST}")
-if( ( CUDA_VERSION VERSION_EQUAL "7.5" ) OR ( CUDA_VERSION VERSION_GREATER "7.5") )
+if( CUDA_VERSION VERSION_GREATER_EQUAL "7.5" )
   if(PopSift_NVCC_WARNINGS)
-    set(CUDA_NVCC_FLAGS_RELEASE "${CUDA_NVCC_FLAGS_RELEASE};-Xptxas;-warn-lmem-usage")
-    set(CUDA_NVCC_FLAGS_RELEASE "${CUDA_NVCC_FLAGS_RELEASE};-Xptxas;-warn-spills")
-    set(CUDA_NVCC_FLAGS_RELEASE "${CUDA_NVCC_FLAGS_RELEASE};-Xptxas;--warn-on-local-memory-usage")
-    set(CUDA_NVCC_FLAGS_RELEASE "${CUDA_NVCC_FLAGS_RELEASE};-Xptxas;--warn-on-spills")
+    string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -Xptxas;--warn-on-local-memory-usage")
+    string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -Xptxas;--warn-on-spills")
   endif()
 endif()
 
-if(PopSift_USE_NORMF AND CUDA_VERSION VERSION_GREATER "7.4")
+if(PopSift_USE_NORMF AND CUDA_VERSION VERSION_GREATER_EQUAL "7.5")
   set(HAVE_NORMF   1)
 else()
   set(HAVE_NORMF   0)
 endif()
 
-if( ( CUDA_VERSION VERSION_EQUAL "9.0" ) OR ( CUDA_VERSION VERSION_GREATER "9.0") )
+if( CUDA_VERSION VERSION_GREATER_EQUAL "9.0" )
   set(HAVE_SHFL_DOWN_SYNC   1)
 else()
   set(HAVE_SHFL_DOWN_SYNC   0)

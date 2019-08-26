@@ -1,8 +1,6 @@
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 
-CUDA_INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/popsift)
-
-CUDA_ADD_LIBRARY(popsift
+add_library(popsift
 	popsift/popsift.cpp popsift/popsift.h
 	popsift/features.cu popsift/features.h
 	popsift/sift_constants.cu popsift/sift_constants.h
@@ -50,15 +48,24 @@ configure_file(popsift/sift_config.h.in
 # built in the building tree (ie, not from an install location)
 target_include_directories(popsift 
             PUBLIC ${Boost_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS}
-            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>")
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>"
+	    PRIVATE
+            "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>/popsift"
+	    )
 
 
 set_target_properties(popsift PROPERTIES VERSION ${PROJECT_VERSION})
 set_target_properties(popsift PROPERTIES DEBUG_POSTFIX "d")
 
+target_compile_features(popsift PUBLIC cxx_std_11)
+
 # cannot use PRIVATE here as there is a bug in FindCUDA and CUDA_ADD_LIBRARY
 # https://gitlab.kitware.com/cmake/cmake/issues/16097
-target_link_libraries(popsift ${Boost_LIBRARIES} ${CUDA_CUDADEVRT_LIBRARY} ${CUDA_CUBLAS_LIBRARIES})
+target_link_libraries(popsift
+		${Boost_LIBRARIES}
+		${CUDA_CUDART_LIBRARY}
+		${CUDA_CUDADEVRT_LIBRARY}
+		${CUDA_CUBLAS_LIBRARIES})
 
 
 # EXPORTING THE LIBRARY
