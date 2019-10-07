@@ -5,7 +5,7 @@ https://github.com/ROCm-Developer-Tools/HIP/blob/master/docs/markdown/hip_portin
 
 # Todo
 
-add Hip to cmake https://github.com/ROCm-Developer-Tools/HIP/issues/231, build
+add Hip to cmake https://github.com/ROCm-Developer-Tools/HIP/issues/231 https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/2_Cookbook/12_cmake_hip_add_executable, build
 
 PopSift
 =======
