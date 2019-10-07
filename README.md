@@ -13,6 +13,8 @@ https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/2_Cookbook/12_cm
 
 https://github.com/ROCm-Developer-Tools/HIP/issues/1029
 
+https://github.com/ROCm-Developer-Tools/HIP/issues/955
+
 - build
 
 PopSift
