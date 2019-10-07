@@ -5,9 +5,7 @@ https://github.com/ROCm-Developer-Tools/HIP/blob/master/docs/markdown/hip_portin
 
 [x] Hipify code
 
-[] Todo
-
-- add Hip to cmake, useful links:
+[ ] add Hip to cmake, useful links:
 
 https://github.com/ROCm-Developer-Tools/HIP/issues/231
 
@@ -21,7 +19,7 @@ https://gitlab.cern.ch/lhcb/Allen/blob/master/CMakeLists.txt
 
 https://cmake.org/pipermail/cmake/2017-October/066492.html
 
-[] build
+[ ] build
 
 PopSift
 =======
