@@ -3,7 +3,9 @@ HiP porting wip
 
 https://github.com/ROCm-Developer-Tools/HIP/blob/master/docs/markdown/hip_porting_guide.md#porting-a-new-cuda-project%22
 
-# Todo
+[x] Hipify code
+
+[] Todo
 
 - add Hip to cmake, useful links:
 
@@ -19,7 +21,7 @@ https://gitlab.cern.ch/lhcb/Allen/blob/master/CMakeLists.txt
 
 https://cmake.org/pipermail/cmake/2017-October/066492.html
 
-- build
+[] build
 
 PopSift
 =======
