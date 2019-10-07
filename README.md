@@ -5,7 +5,7 @@ https://github.com/ROCm-Developer-Tools/HIP/blob/master/docs/markdown/hip_portin
 
 # Todo
 
-add HiP dependency, compiling
+add HiP dependency (HIP_PATH), make
 
 PopSift
 =======
