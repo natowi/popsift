@@ -129,7 +129,7 @@ int Pyramid::extrema_filter_grid( const Config& conf, int ext_total )
     for( int o=0; o<MAX_OCTAVES; o++ ) {
         const int ocount = hct.ext_ct[o];
         if( ocount > 0 ) {
-            cudaStream_t oct_str = _octaves[o].getStream();
+            hipStream_t oct_str = _octaves[o].getStream();
 
             // fill a continuous device array with octave of all initial extrema
             thrust::fill(     thrust::cuda::par.on(oct_str),
@@ -144,7 +144,7 @@ int Pyramid::extrema_filter_grid( const Config& conf, int ext_total )
         }
     }
 
-    cudaDeviceSynchronize();
+    hipDeviceSynchronize();
 
     // extract cell and scale value for all initial extrema
     FunctionExtractCell          fun_extract_cell;

@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 
 #include <iostream>
 
@@ -21,7 +21,7 @@ __device__ __constant__ ConstInfo d_consts;
 
 void init_constants( float sigma0, int levels, float threshold, float edge_limit, int max_extrema, int normalization_multiplier )
 {
-    cudaError_t err;
+    hipError_t err;
 
     h_consts.sigma0           = sigma0;
     h_consts.sigma_k          = powf(2.0f, 1.0f / levels );
@@ -46,9 +46,9 @@ void init_constants( float sigma0, int levels, float threshold, float edge_limit
         h_consts.desc_tile[i] = 1.0f - fabs(nx);
     }
 
-    err = cudaMemcpyToSymbol( d_consts, &h_consts,
+    err = hipMemcpyToSymbol(HIP_SYMBOL(d_consts), &h_consts,
                               sizeof(ConstInfo), 0,
-                              cudaMemcpyHostToDevice );
+                              hipMemcpyHostToDevice );
     POP_CUDA_FATAL_TEST( err, "Failed to upload h_consts to device: " );
 }
 

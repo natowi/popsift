@@ -19,7 +19,7 @@ namespace popsift {
 
 struct LinearTexture
 {
-    cudaSurfaceObject_t tex;
+    hipSurfaceObject_t tex;
 };
 
 class Octave
@@ -34,34 +34,34 @@ class Octave
     int   _levels;
     int   _gauss_group;
 
-    cudaArray_t           _data;
-    cudaChannelFormatDesc _data_desc;
-    cudaExtent            _data_ext;
-    cudaSurfaceObject_t   _data_surf;
-    cudaTextureObject_t   _data_tex_point;
+    hipArray_t           _data;
+    hipChannelFormatDesc _data_desc;
+    hipExtent            _data_ext;
+    hipSurfaceObject_t   _data_surf;
+    hipTextureObject_t   _data_tex_point;
     LinearTexture         _data_tex_linear;
 
-    cudaArray_t           _intm;
-    cudaChannelFormatDesc _intm_desc;
-    cudaExtent            _intm_ext;
-    cudaSurfaceObject_t   _intm_surf;
-    cudaTextureObject_t   _intm_tex_point;
+    hipArray_t           _intm;
+    hipChannelFormatDesc _intm_desc;
+    hipExtent            _intm_ext;
+    hipSurfaceObject_t   _intm_surf;
+    hipTextureObject_t   _intm_tex_point;
     LinearTexture         _intm_tex_linear;
 
-    cudaArray_t           _dog_3d;
-    cudaChannelFormatDesc _dog_3d_desc;
-    cudaExtent            _dog_3d_ext;
-    cudaSurfaceObject_t   _dog_3d_surf;
-    cudaTextureObject_t   _dog_3d_tex_point;
+    hipArray_t           _dog_3d;
+    hipChannelFormatDesc _dog_3d_desc;
+    hipExtent            _dog_3d_ext;
+    hipSurfaceObject_t   _dog_3d_surf;
+    hipTextureObject_t   _dog_3d_tex_point;
     LinearTexture         _dog_3d_tex_linear;
 
     // one CUDA stream per level
     // consider whether some of them can be removed
-    cudaStream_t _stream;
-    cudaEvent_t  _scale_done;
-    cudaEvent_t  _extrema_done;
-    cudaEvent_t  _ori_done;
-    cudaEvent_t  _desc_done;
+    hipStream_t _stream;
+    hipEvent_t  _scale_done;
+    hipEvent_t  _extrema_done;
+    hipEvent_t  _ori_done;
+    hipEvent_t  _desc_done;
 
 public:
     Octave( );
@@ -86,45 +86,45 @@ public:
         return _h_grid_divider;
     }
 
-    inline cudaStream_t getStream( ) {
+    inline hipStream_t getStream( ) {
         return _stream;
     }
-    inline cudaEvent_t getEventScaleDone( ) {
+    inline hipEvent_t getEventScaleDone( ) {
         return _scale_done;
     }
-    inline cudaEvent_t getEventExtremaDone( ) {
+    inline hipEvent_t getEventExtremaDone( ) {
         return _extrema_done;
     }
-    inline cudaEvent_t getEventOriDone( ) {
+    inline hipEvent_t getEventOriDone( ) {
         return _ori_done;
     }
-    inline cudaEvent_t getEventDescDone( ) {
+    inline hipEvent_t getEventDescDone( ) {
         return _desc_done;
     }
 
     inline LinearTexture getIntermDataTexLinear( ) {
         return _intm_tex_linear;
     }
-    inline cudaTextureObject_t getIntermDataTexPoint( ) {
+    inline hipTextureObject_t getIntermDataTexPoint( ) {
         return _intm_tex_point;
     }
     inline LinearTexture getDataTexLinear( ) {
         return _data_tex_linear;
     }
-    inline cudaTextureObject_t getDataTexPoint( ) {
+    inline hipTextureObject_t getDataTexPoint( ) {
         return _data_tex_point;
     }
-    inline cudaSurfaceObject_t getDataSurface( ) {
+    inline hipSurfaceObject_t getDataSurface( ) {
         return _data_surf;
     }
-    inline cudaSurfaceObject_t getIntermediateSurface( ) {
+    inline hipSurfaceObject_t getIntermediateSurface( ) {
         return _intm_surf;
     }
         
-    inline cudaSurfaceObject_t& getDogSurface( ) {
+    inline hipSurfaceObject_t& getDogSurface( ) {
         return _dog_3d_surf;
     }
-    inline cudaTextureObject_t& getDogTexturePoint( ) {
+    inline hipTextureObject_t& getDogTexturePoint( ) {
         return _dog_3d_tex_point;
     }
     inline LinearTexture& getDogTextureLinear( ) {

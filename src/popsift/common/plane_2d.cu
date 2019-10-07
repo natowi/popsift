@@ -17,7 +17,7 @@
 #include <malloc.h>
 #endif
 
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 
 #include "plane_2d.h"
 #include "assist.h"
@@ -32,8 +32,8 @@ void* PlaneBase::allocDev2D( size_t& pitch, int w, int h, int elemSize )
 {
     // cerr << "Alloc " << w*h*elemSize << " B" << endl;
     void*       ptr;
-    cudaError_t err;
-    err = cudaMallocPitch( &ptr, &pitch, w * elemSize, h );
+    hipError_t err;
+    err = hipMallocPitch( &ptr, &pitch, w * elemSize, h );
     POP_CUDA_FATAL_TEST( err, "Cannot allocate pitched CUDA memory: " );
     return ptr;
 }
@@ -41,8 +41,8 @@ void* PlaneBase::allocDev2D( size_t& pitch, int w, int h, int elemSize )
 __host__
 void PlaneBase::freeDev2D( void* data )
 {
-    cudaError_t err;
-    err = cudaFree( data );
+    hipError_t err;
+    err = hipFree( data );
     POP_CUDA_FATAL_TEST( err, "Failed to free CUDA memory: " );
 }
 
@@ -85,8 +85,8 @@ void* PlaneBase::allocHost2D( int w, int h, int elemSize, PlaneMapMode m )
         return allocHost2D( w, h, elemSize, Unaligned );
     } else if( m == CudaAllocated ) {
         void* ptr;
-        cudaError_t err;
-        err = cudaMallocHost( &ptr, sz );
+        hipError_t err;
+        err = hipHostMalloc( &ptr, sz );
         POP_CUDA_FATAL_TEST( err, "Failed to allocate aligned and pinned host memory: " );
         return ptr;
     } else {
@@ -102,7 +102,7 @@ void PlaneBase::freeHost2D( void* data, PlaneMapMode m )
     if (!data)
         return;
     else if (m == CudaAllocated) {
-        cudaFreeHost(data);
+        hipHostFree(data);
         return;
     }
     else if (m == Unaligned) {
@@ -128,11 +128,11 @@ void PlaneBase::memcpyToDevice( void* dst, int dst_pitch,
     assert( src_pitch != 0 );
     assert( cols != 0 );
     assert( rows != 0 );
-    cudaError_t err;
-    err = cudaMemcpy2D( dst, dst_pitch,
+    hipError_t err;
+    err = hipMemcpy2D( dst, dst_pitch,
                         src, src_pitch,
                         cols*elemSize, rows,
-                        cudaMemcpyHostToDevice );
+                        hipMemcpyHostToDevice );
     POP_CUDA_FATAL_TEST( err, "Failed to copy 2D plane host-to-device: " );
 }
 
@@ -141,7 +141,7 @@ void PlaneBase::memcpyToDevice( void* dst, int dst_pitch,
                                 void* src, int src_pitch,
                                 short cols, short rows,
                                 int elemSize,
-                                cudaStream_t stream )
+                                hipStream_t stream )
 {
     assert( dst != 0 );
     assert( dst_pitch != 0 );
@@ -149,11 +149,11 @@ void PlaneBase::memcpyToDevice( void* dst, int dst_pitch,
     assert( src_pitch != 0 );
     assert( cols != 0 );
     assert( rows != 0 );
-    cudaError_t err;
-    err = cudaMemcpy2DAsync( dst, dst_pitch,
+    hipError_t err;
+    err = hipMemcpy2DAsync( dst, dst_pitch,
                              src, src_pitch,
                              cols*elemSize, rows,
-                             cudaMemcpyHostToDevice,
+                             hipMemcpyHostToDevice,
                              stream );
     POP_CUDA_FATAL_TEST( err, "Failed to copy 2D plane host-to-device: " );
 }
@@ -170,11 +170,11 @@ void PlaneBase::memcpyToHost( void* dst, int dst_pitch,
     assert( src_pitch != 0 );
     assert( cols != 0 );
     assert( rows != 0 );
-    cudaError_t err;
-    err = cudaMemcpy2D( dst, dst_pitch,
+    hipError_t err;
+    err = hipMemcpy2D( dst, dst_pitch,
                         src, src_pitch,
                         cols*elemSize, rows,
-                        cudaMemcpyDeviceToHost );
+                        hipMemcpyDeviceToHost );
     POP_CUDA_FATAL_TEST( err, "Failed to copy 2D plane device-to-host: " );
 }
 
@@ -183,7 +183,7 @@ void PlaneBase::memcpyToHost( void* dst, int dst_pitch,
                               void* src, int src_pitch,
                               short cols, short rows,
                               int elemSize,
-                              cudaStream_t stream )
+                              hipStream_t stream )
 {
     assert( dst != 0 );
     assert( dst_pitch != 0 );
@@ -191,21 +191,21 @@ void PlaneBase::memcpyToHost( void* dst, int dst_pitch,
     assert( src_pitch != 0 );
     assert( cols != 0 );
     assert( rows != 0 );
-    cudaError_t err;
-    err = cudaMemcpy2DAsync( dst, dst_pitch,
+    hipError_t err;
+    err = hipMemcpy2DAsync( dst, dst_pitch,
                              src, src_pitch,
                              cols*elemSize, rows,
-                             cudaMemcpyDeviceToHost,
+                             hipMemcpyDeviceToHost,
                              stream );
     POP_CUDA_FATAL_TEST( err, "Failed to copy 2D plane device-to-host: " );
 }
 
 #ifdef PLANE2D_CUDA_OP_DEBUG
 __host__
-void PlaneBase::waitAndCheck( cudaStream_t stream ) const
+void PlaneBase::waitAndCheck( hipStream_t stream ) const
 {
-    cudaStreamSynchronize( stream );
-    cudaError_t err = cudaGetLastError( );
+    hipStreamSynchronize( stream );
+    hipError_t err = hipGetLastError( );
     POP_CUDA_FATAL_TEST( err, "Failed in error check after async 2D plane operation: " );
 }
 #endif // PLANE2D_CUDA_OP_DEBUG

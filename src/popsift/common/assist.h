@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <iostream>
 #include <thread>
 #ifdef _WIN32
@@ -64,7 +64,7 @@ inline int grid_divide( int size, int divider )
 }
 
 __device__ static inline
-float readTex( cudaTextureObject_t tex, float x, float y, float z )
+float readTex( hipTextureObject_t tex, float x, float y, float z )
 {
     /* Look at CUDA C programming guide:
      * Doesn't matter if we access Linear or Point textures,
@@ -75,7 +75,7 @@ float readTex( cudaTextureObject_t tex, float x, float y, float z )
 }
 
 __device__ static inline
-float readTex( cudaTextureObject_t tex, float x, float y )
+float readTex( hipTextureObject_t tex, float x, float y )
 {
     return tex2D<float>( tex, x+0.5f, y+0.5f );
 }

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -58,7 +59,7 @@ void Pyramid::descriptors( const Config& conf )
    nvtxRangePushA("Reading orientation count");
 
    readDescCountersFromDevice( _octaves[0].getStream() );
-   cudaStreamSynchronize( _octaves[0].getStream() );
+   hipStreamSynchronize( _octaves[0].getStream() );
    nvtxRangePop( );
 
     for( int octave=_num_octaves-1; octave>=0; octave-- )
@@ -99,13 +100,13 @@ void Pyramid::descriptors( const Config& conf )
     block.z = 1;
 
     if( conf.getUseRootSift() ) {
-        normalize_histogram<NormalizeRootSift> <<<grid,block,0,_download_stream>>> ( );
+        hipLaunchKernelGGL((normalize_histogram<NormalizeRootSift>), dim3(grid), dim3(block), 0, _download_stream);
         POP_SYNC_CHK;
     } else {
-        normalize_histogram<NormalizeL2> <<<grid,block,0,_download_stream>>> ( );
+        hipLaunchKernelGGL((normalize_histogram<NormalizeL2>), dim3(grid), dim3(block), 0, _download_stream);
         POP_SYNC_CHK;
     }
 
-    cudaDeviceSynchronize( );
+    hipDeviceSynchronize( );
 }
 

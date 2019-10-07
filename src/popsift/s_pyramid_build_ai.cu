@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -15,8 +16,8 @@ namespace gauss {
 namespace absoluteSourceInterpolated {
 
 __global__
-void horiz( cudaTextureObject_t src_linear_tex,
-            cudaSurfaceObject_t dst_data,
+void horiz( hipTextureObject_t src_linear_tex,
+            hipSurfaceObject_t dst_data,
             const int           dst_level )
 {
     const int    src_level = dst_level - 1;
@@ -40,12 +41,12 @@ void horiz( cudaTextureObject_t src_linear_tex,
     const float v3 = readTex( src_linear_tex, off_x, blockIdx.y, src_level );
     out += ( v3 * g );
 
-    surf2DLayeredwrite( out, dst_data, off_x*4, blockIdx.y, dst_level, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out, dst_data, off_x*4, blockIdx.y, dst_level, hipBoundaryModeZero );
 }
 
 __global__
-void vert( cudaTextureObject_t src_linear_tex,
-           cudaSurfaceObject_t dst_data,
+void vert( hipTextureObject_t src_linear_tex,
+           hipSurfaceObject_t dst_data,
            const int           dst_level )
 {
     const int    span   =  d_gauss.inc.i_span[dst_level];
@@ -71,12 +72,12 @@ void vert( cudaTextureObject_t src_linear_tex,
     float val = readTex( src_linear_tex, block_x + idx, block_y + idy, dst_level );
     out += ( val * g );
 
-    surf2DLayeredwrite( out, dst_data, (block_x+idx)*4, block_y+idy, dst_level, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out, dst_data, (block_x+idx)*4, block_y+idy, dst_level, hipBoundaryModeZero );
 }
 
 __global__
-void vert_abs0( cudaTextureObject_t src_linear_tex,
-                cudaSurfaceObject_t dst_data,
+void vert_abs0( hipTextureObject_t src_linear_tex,
+                hipSurfaceObject_t dst_data,
                 const int           dst_level )
 {
     const int    span   =  d_gauss.abs_o0.i_span[dst_level];
@@ -102,12 +103,12 @@ void vert_abs0( cudaTextureObject_t src_linear_tex,
     float val = readTex( src_linear_tex, block_x + idx, block_y + idy, dst_level );
     out += ( val * g );
 
-    surf2DLayeredwrite( out, dst_data, (block_x+idx)*4, block_y+idy, dst_level, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out, dst_data, (block_x+idx)*4, block_y+idy, dst_level, hipBoundaryModeZero );
 }
 
 __global__
-void vert_all_abs0( cudaTextureObject_t src_linear_tex,
-                    cudaSurfaceObject_t dst_data,
+void vert_all_abs0( hipTextureObject_t src_linear_tex,
+                    hipSurfaceObject_t dst_data,
                     const int           start_level,
                     const int           max_level )
 {
@@ -137,7 +138,7 @@ void vert_all_abs0( cudaTextureObject_t src_linear_tex,
         float        val = readTex( src_linear_tex, block_x + idx, block_y + idy, dst_level );
         out += ( val * g );
 
-        surf2DLayeredwrite( out, dst_data, (block_x+idx)*4, block_y+idy, dst_level, cudaBoundaryModeZero );
+        surf2DLayeredwrite( out, dst_data, (block_x+idx)*4, block_y+idy, dst_level, hipBoundaryModeZero );
     }
 }
 

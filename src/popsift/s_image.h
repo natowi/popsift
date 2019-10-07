@@ -39,7 +39,7 @@ struct ImageBase
      */
     virtual void load( void* input ) = 0;
 
-    inline cudaTextureObject_t& getInputTexture() {
+    inline hipTextureObject_t& getInputTexture() {
         return _input_image_tex;
     }
 
@@ -58,9 +58,9 @@ protected:
     int _max_h; // allocated height of image
 
     /* Texture information for input image on device */
-    cudaTextureObject_t _input_image_tex;
-    cudaTextureDesc     _input_image_texDesc;
-    cudaResourceDesc    _input_image_resDesc;
+    hipTextureObject_t _input_image_tex;
+    hipTextureDesc     _input_image_texDesc;
+    hipResourceDesc    _input_image_resDesc;
 };
 
 /*************************************************************

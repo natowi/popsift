@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -33,7 +34,7 @@ void ext_desc_notile_sub( const float x, const float y, const int level,
                          const float cos_t, const float sin_t, const float SBP,
                          const Extremum*     ext,
                          float* __restrict__ features,
-                         cudaTextureObject_t texLinear )
+                         hipTextureObject_t texLinear )
 {
     float dpt[8] = { 0 };
 
@@ -97,7 +98,7 @@ __global__
 // no -- __launch_bounds__(128) // 63/thread
 // no -- no launch bound // 64/thread/thread
 void ext_desc_notile( const int           octave,
-                      cudaTextureObject_t texLinear )
+                      hipTextureObject_t texLinear )
 {
     const int   num      = dct.ori_ct[octave];
 
@@ -146,15 +147,13 @@ bool start_ext_desc_notile( const int octave, Octave& oct_obj )
 
     if( grid.x == 0 ) return false;
 
-    ext_desc_notile
-        <<<grid,block,0,oct_obj.getStream()>>>
-        ( octave,
+    hipLaunchKernelGGL(ext_desc_notile, dim3(grid), dim3(block), 0, oct_obj.getStream(),  octave,
           oct_obj.getDataTexLinear( ).tex );
-    cudaDeviceSynchronize();
-    cudaError_t err = cudaGetLastError( );
-    if( err != cudaSuccess ) {
+    hipDeviceSynchronize();
+    hipError_t err = hipGetLastError( );
+    if( err != hipSuccess ) {
         std::cerr << __FILE__ << ":" << __LINE__ << std::endl
-                  << "    cudaGetLastError failed: " << cudaGetErrorString(err) << std::endl;
+                  << "    hipGetLastError failed: " << hipGetErrorString(err) << std::endl;
         exit( -__LINE__ );
     }
 

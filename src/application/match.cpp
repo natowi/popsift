@@ -218,7 +218,7 @@ SiftJob* process_image( const string& inputFile, PopSift& PopSift )
 
 int main(int argc, char **argv)
 {
-    cudaDeviceReset();
+    hipDeviceReset();
 
     popsift::Config config;
     string         lFile = "";

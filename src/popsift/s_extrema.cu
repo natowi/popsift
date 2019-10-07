@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016, Simula Research Laboratory
  *
@@ -5,8 +6,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-#include <cuda_runtime.h>
-#include <texture_fetch_functions.h>
+#include <hip/hip_runtime.h>
+#include <>
 #include <stdio.h>
 #include <iso646.h>
 
@@ -55,7 +56,7 @@ inline void extremum_cmp( float val, float f, uint32_t& gt, uint32_t& lt, uint32
 
 __device__
 static
-inline bool is_extremum( cudaTextureObject_t obj,
+inline bool is_extremum( hipTextureObject_t obj,
                          int x, int y, int z )
 {
     uint32_t gt = 0;
@@ -299,7 +300,7 @@ public:
 
 template<int sift_mode>
 __device__ inline
-bool find_extrema_in_dog_sub( cudaTextureObject_t dog,
+bool find_extrema_in_dog_sub( hipTextureObject_t dog,
                               int                 debug_octave,
                               int                 width,
                               int                 height,
@@ -509,7 +510,7 @@ __global__
 #ifdef NDEBUG
 __launch_bounds__(128,16)
 #endif
-void find_extrema_in_dog( cudaTextureObject_t dog,
+void find_extrema_in_dog( hipTextureObject_t dog,
                           int                 octave,
                           int                 width,
                           int                 height,
@@ -580,7 +581,7 @@ void Pyramid::find_extrema( const Config& conf )
         grid.y  = grid_divide( rows, block.y );
         grid.z  = _levels - 3;
 
-        cudaStream_t oct_str = oct_obj.getStream();
+        hipStream_t oct_str = oct_obj.getStream();
 
         int*  num_blocks      = extrema_num_blocks;
 
@@ -592,9 +593,7 @@ void Pyramid::find_extrema( const Config& conf )
         switch( conf.getSiftMode() )
         {
         case Config::VLFeat :
-                find_extrema_in_dog<HEIGHT,Config::VLFeat>
-                    <<<grid,block,0,oct_str>>>
-                    ( oct_obj.getDogTexture( ),
+                hipLaunchKernelGGL((find_extrema_in_dog<HEIGHT,Config::VLFeat>), dim3(grid), dim3(block), 0, oct_str,  oct_obj.getDogTexture( ),
                       octave,
                       cols,
                       rows,
@@ -607,9 +606,7 @@ void Pyramid::find_extrema( const Config& conf )
                 POP_SYNC_CHK;
                 break;
         case Config::OpenCV :
-                find_extrema_in_dog<HEIGHT,Config::OpenCV>
-                    <<<grid,block,0,oct_str>>>
-                    ( oct_obj.getDogTexture( ),
+                hipLaunchKernelGGL((find_extrema_in_dog<HEIGHT,Config::OpenCV>), dim3(grid), dim3(block), 0, oct_str,  oct_obj.getDogTexture( ),
                       octave,
                       cols,
                       rows,
@@ -622,9 +619,7 @@ void Pyramid::find_extrema( const Config& conf )
                 POP_SYNC_CHK;
                 break;
         default :
-                find_extrema_in_dog<HEIGHT,Config::PopSift>
-                    <<<grid,block,0,oct_str>>>
-                    ( oct_obj.getDogTexture( ),
+                hipLaunchKernelGGL((find_extrema_in_dog<HEIGHT,Config::PopSift>), dim3(grid), dim3(block), 0, oct_str,  oct_obj.getDogTexture( ),
                       octave,
                       cols,
                       rows,

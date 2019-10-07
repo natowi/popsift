@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2017, Simula Research Laboratory
  *
@@ -47,7 +48,7 @@ namespace absoluteTexAddress {
 
 template<int SHIFT>
 __device__
-inline float octave_fixed_vert( cudaTextureObject_t src_data, int idx, int idy, int level, const float* filter )
+inline float octave_fixed_vert( hipTextureObject_t src_data, int idx, int idy, int level, const float* filter )
 {
     /* Input thread N takes as input the (idx,idy) position of the pixel that it
      * will eventually write (The 2*SHIFT rightmost threads will not write anything).
@@ -68,11 +69,11 @@ inline float octave_fixed_vert( cudaTextureObject_t src_data, int idx, int idy, 
 
 template<int SHIFT, int WIDTH, int HEIGHT, int LEVELS>
 __global__
-void octave_fixed( cudaTextureObject_t src_data,
-                   cudaSurfaceObject_t dst_data,
+void octave_fixed( hipTextureObject_t src_data,
+                   hipSurfaceObject_t dst_data,
                    const int           w,
                    const int           h,
-                   cudaSurfaceObject_t dog_data )
+                   hipSurfaceObject_t dog_data )
 {
     const int IDx   = threadIdx.x;
     const int IDy   = threadIdx.y;
@@ -109,12 +110,12 @@ void octave_fixed( cudaTextureObject_t src_data,
             surf2DLayeredwrite( fval, dst_data,
                                 idx*4, idy,
                                 IDz + 1,
-                                cudaBoundaryModeZero );
+                                hipBoundaryModeZero );
 
             surf2DLayeredwrite( dogval, dog_data,
                                 idx*4, idy,
                                 IDz,
-                                cudaBoundaryModeZero );
+                                hipBoundaryModeZero );
         }
     }
 }
@@ -127,7 +128,7 @@ namespace relativeTexAddress {
 /* reading from the texture laid over the input image */
 template<int SHIFT>
 __device__
-inline float octave_fixed_vert( cudaTextureObject_t src_data, int idx, int idy, const float mul_w, const float mul_h, float tshift, const float* filter )
+inline float octave_fixed_vert( hipTextureObject_t src_data, int idx, int idy, const float mul_w, const float mul_h, float tshift, const float* filter )
 {
     /* Like above, but reading uses relative input image positions */
     const float xpos = ( idx - SHIFT + tshift ) * mul_w;
@@ -147,9 +148,9 @@ inline float octave_fixed_vert( cudaTextureObject_t src_data, int idx, int idy, 
 
 template<int SHIFT, int WIDTH, int HEIGHT, int LEVELS>
 __global__
-void octave_fixed( cudaTextureObject_t src_data,
-                   cudaSurfaceObject_t dst_data,
-                   cudaSurfaceObject_t dog_data,
+void octave_fixed( hipTextureObject_t src_data,
+                   hipSurfaceObject_t dst_data,
+                   hipSurfaceObject_t dog_data,
                    const int           w,
                    const int           h,
                    const float         tshift )
@@ -187,7 +188,7 @@ void octave_fixed( cudaTextureObject_t src_data,
             surf2DLayeredwrite( fval, dst_data,
                                 idx*4, idy,
                                 level,
-                                cudaBoundaryModeZero );
+                                hipBoundaryModeZero );
 
         if( level > 0 ) {
             float dogval = fval - lx_val[IDy][IDx][level-1];
@@ -196,7 +197,7 @@ void octave_fixed( cudaTextureObject_t src_data,
             surf2DLayeredwrite( dogval, dog_data,
                                 idx*4, idy,
                                 level-1,
-                                cudaBoundaryModeZero );
+                                hipBoundaryModeZero );
         }
     }
 }
@@ -209,7 +210,7 @@ void octave_fixed( cudaTextureObject_t src_data,
 
 template<int SHIFT, bool OCT_0, int LEVELS>
 __host__
-inline void make_octave_sub( const Config& conf, ImageBase* base, Octave& oct_obj, cudaStream_t stream )
+inline void make_octave_sub( const Config& conf, ImageBase* base, Octave& oct_obj, hipStream_t stream )
 {
     const int width  = oct_obj.getWidth();
     const int height = oct_obj.getHeight();
@@ -231,10 +232,7 @@ inline void make_octave_sub( const Config& conf, ImageBase* base, Octave& oct_ob
 
         const float tshift = 0.5f * powf( 2.0f, conf.getUpscaleFactor() );
 
-        gauss::fixedSpan::relativeTexAddress::octave_fixed
-            <SHIFT,w_conf,h_conf,l_conf>
-            <<<grid,block,0,stream>>>
-            ( base->getInputTexture( ),
+        gauss::fixedSpan::relativeTexAddress::hipLaunchKernelGGL((octave_fixed<SHIFT,w_conf,h_conf,l_conf>), dim3(grid), dim3(block), 0, stream,  base->getInputTexture( ),
               oct_obj.getDataSurface( ),
               oct_obj.getDogSurface( ),
               oct_obj.getWidth(),
@@ -255,10 +253,7 @@ inline void make_octave_sub( const Config& conf, ImageBase* base, Octave& oct_ob
         // cerr << "calling absolute with " << block.x * block.y * block.z << " threads per block" << endl
              // << "                 and  " << grid.x * grid.y * grid.z << " blocks" << endl;
 
-        gauss::fixedSpan::absoluteTexAddress::octave_fixed
-            <SHIFT,w_conf,h_conf,l_conf>
-            <<<grid,block,0,stream>>>
-            ( oct_obj.getDataTexPoint( ),
+        gauss::fixedSpan::absoluteTexAddress::hipLaunchKernelGGL((octave_fixed<SHIFT,w_conf,h_conf,l_conf>), dim3(grid), dim3(block), 0, stream,  oct_obj.getDataTexPoint( ),
               oct_obj.getDataSurface( ),
               oct_obj.getWidth(),
               oct_obj.getHeight(),
@@ -266,7 +261,7 @@ inline void make_octave_sub( const Config& conf, ImageBase* base, Octave& oct_ob
     }
 }
 
-void Pyramid::make_octave( const Config& conf, ImageBase* base, Octave& oct_obj, cudaStream_t stream, bool isOctaveZero )
+void Pyramid::make_octave( const Config& conf, ImageBase* base, Octave& oct_obj, hipStream_t stream, bool isOctaveZero )
 {
     if( _levels == 6 ) {
         if( conf.getGaussMode() == Config::Fixed9 ) {

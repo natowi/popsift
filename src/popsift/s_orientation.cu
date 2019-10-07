@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -60,7 +61,7 @@ inline float compute_angle( int bin, float hc, float hn, float hp )
 __global__
 void ori_par( const int           octave,
               const int           ext_ct_prefix_sum,
-              cudaTextureObject_t layer,
+              hipTextureObject_t layer,
               const int           w,
               const int           h )
 {
@@ -378,14 +379,14 @@ void Pyramid::orientation( const Config& conf )
     }
     hct.ext_total = ext_ct_prefix_sum;
 
-    cudaStream_t oct_0_str = _octaves[0].getStream();
+    hipStream_t oct_0_str = _octaves[0].getStream();
 
     // for( int octave=0; octave<_num_octaves; octave++ )
     for( int octave=_num_octaves-1; octave>=0; octave-- )
     {
         Octave&      oct_obj = _octaves[octave];
 
-        cudaStream_t oct_str = oct_obj.getStream();
+        hipStream_t oct_str = oct_obj.getStream();
 
         int num = hct.ext_ct[octave];
 
@@ -397,9 +398,7 @@ void Pyramid::orientation( const Config& conf )
             block.y = 1;
             grid.x  = num;
 
-            ori_par
-                <<<grid,block,0,oct_str>>>
-                ( octave,
+            hipLaunchKernelGGL(ori_par, dim3(grid), dim3(block), 0, oct_str,  octave,
                   hct.ext_ps[octave],
                   oct_obj.getDataTexPoint( ),
                   oct_obj.getWidth( ),
@@ -419,11 +418,9 @@ void Pyramid::orientation( const Config& conf )
     block.x = 32;
     block.y = 32;
     grid.x  = 1;
-    ori_prefix_sum
-        <<<grid,block,0,oct_0_str>>>
-        ( ext_ct_prefix_sum, _num_octaves );
+    hipLaunchKernelGGL(ori_prefix_sum, dim3(grid), dim3(block), 0, oct_0_str,  ext_ct_prefix_sum, _num_octaves );
     POP_SYNC_CHK;
 
-    cudaDeviceSynchronize();
+    hipDeviceSynchronize();
 }
 

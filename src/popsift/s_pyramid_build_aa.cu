@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -15,8 +16,8 @@ namespace gauss {
 namespace absoluteSource {
 
 __global__
-void horiz( cudaTextureObject_t src_point_texture,
-            cudaSurfaceObject_t dst_data,
+void horiz( hipTextureObject_t src_point_texture,
+            hipSurfaceObject_t dst_data,
             const int           dst_level )
 {
     const int    src_level = dst_level - 1;
@@ -49,12 +50,12 @@ void horiz( cudaTextureObject_t src_point_texture,
         out += ( D + E ) * g;
     }
 
-    surf2DLayeredwrite( out, dst_data, off_x*4, off_y, dst_level, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out, dst_data, off_x*4, off_y, dst_level, hipBoundaryModeZero );
 }
 
 __global__
-void vert( cudaTextureObject_t src_point_texture,
-           cudaSurfaceObject_t dst_data,
+void vert( hipTextureObject_t src_point_texture,
+           hipSurfaceObject_t dst_data,
            const int           dst_level )
 {
     const int    span   =  d_gauss.inc.span[dst_level];
@@ -88,12 +89,12 @@ void vert( cudaTextureObject_t src_point_texture,
     idx = block_x+threadIdx.x;
     idy = block_y+threadIdx.y;
 
-    surf2DLayeredwrite( out, dst_data, idx*4, idy, dst_level, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out, dst_data, idx*4, idy, dst_level, hipBoundaryModeZero );
 }
 
 __global__
-void vert_abs0( cudaTextureObject_t src_point_texture,
-           cudaSurfaceObject_t dst_data,
+void vert_abs0( hipTextureObject_t src_point_texture,
+           hipSurfaceObject_t dst_data,
            const int           dst_level )
 {
     const int    span   =  d_gauss.abs_o0.span[dst_level];
@@ -127,12 +128,12 @@ void vert_abs0( cudaTextureObject_t src_point_texture,
     idx = block_x+threadIdx.x;
     idy = block_y+threadIdx.y;
 
-    surf2DLayeredwrite( out, dst_data, idx*4, idy, dst_level, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out, dst_data, idx*4, idy, dst_level, hipBoundaryModeZero );
 }
 
 __global__
-void vert_all_abs0( cudaTextureObject_t src_point_texture,
-                    cudaSurfaceObject_t dst_data,
+void vert_all_abs0( hipTextureObject_t src_point_texture,
+                    hipSurfaceObject_t dst_data,
                     const int           start_level,
                     const int           max_level )
 {
@@ -171,7 +172,7 @@ void vert_all_abs0( cudaTextureObject_t src_point_texture,
         idx = block_x+threadIdx.x;
         idy = block_y+threadIdx.y;
 
-        surf2DLayeredwrite( out, dst_data, idx*4, idy, dst_level, cudaBoundaryModeZero );
+        surf2DLayeredwrite( out, dst_data, idx*4, idy, dst_level, hipBoundaryModeZero );
     }
 }
 

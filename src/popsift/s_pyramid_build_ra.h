@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -12,16 +13,16 @@ namespace gauss {
 namespace normalizedSource {
 
 __global__
-void horiz( cudaTextureObject_t src_data,
-            cudaSurfaceObject_t dst_data,
+void horiz( hipTextureObject_t src_data,
+            hipSurfaceObject_t dst_data,
             const int           dst_w,
             const int           dst_h,
             int                 octave,
             float               shift );
 
 __global__
-void horiz_level( cudaTextureObject_t src_linear_tex,
-                  cudaSurfaceObject_t dst_data,
+void horiz_level( hipTextureObject_t src_linear_tex,
+                  hipSurfaceObject_t dst_data,
                   int                 dst_w,
                   int                 dst_h,
                   int                 /* octave - must be 0 */,
@@ -29,8 +30,8 @@ void horiz_level( cudaTextureObject_t src_linear_tex,
                   float               shift );
 
 __global__
-void horiz_all( cudaTextureObject_t src_linear_tex,
-                cudaSurfaceObject_t dst_data,
+void horiz_all( hipTextureObject_t src_linear_tex,
+                hipSurfaceObject_t dst_data,
                 int                 dst_w,
                 int                 dst_h,
                 float               shift,

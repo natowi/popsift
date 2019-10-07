@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -30,9 +31,9 @@ namespace popsift {
 namespace gauss {
 
 __global__
-void get_by_2_interpolate( cudaTextureObject_t src_data,
+void get_by_2_interpolate( hipTextureObject_t src_data,
                            const int           src_level,
-                           cudaSurfaceObject_t dst_data,
+                           hipSurfaceObject_t dst_data,
                            const int           dst_w,
                            const int           dst_h )
 {
@@ -44,15 +45,15 @@ void get_by_2_interpolate( cudaTextureObject_t src_data,
 
     const float val = readTex( src_data, 2.0f * idx + 1.0f, 2.0f * idy + 1.0f, src_level );
 
-    surf2DLayeredwrite( val, dst_data, idx*4, idy, 0, cudaBoundaryModeZero ); // dst_data.ptr(idy)[idx] = val;
+    surf2DLayeredwrite( val, dst_data, idx*4, idy, 0, hipBoundaryModeZero ); // dst_data.ptr(idy)[idx] = val;
 }
 
 __global__
-void get_by_2_pick_every_second( cudaTextureObject_t src_data,
+void get_by_2_pick_every_second( hipTextureObject_t src_data,
                                  const int           src_w,
                                  const int           src_h,
                                  const int           src_level,
-                                 cudaSurfaceObject_t dst_data,
+                                 hipSurfaceObject_t dst_data,
                                  const int           dst_w,
                                  const int           dst_h )
 {
@@ -67,13 +68,13 @@ void get_by_2_pick_every_second( cudaTextureObject_t src_data,
 
     const float val = readTex( src_data, read_x, read_y, src_level );
 
-    surf2DLayeredwrite( val, dst_data, idx*4, idy, 0, cudaBoundaryModeZero ); // dst_data.ptr(idy)[idx] = val;
+    surf2DLayeredwrite( val, dst_data, idx*4, idy, 0, hipBoundaryModeZero ); // dst_data.ptr(idy)[idx] = val;
 }
 
 
 __global__
-void make_dog( cudaTextureObject_t src_data,
-               cudaSurfaceObject_t dog_data,
+void make_dog( hipTextureObject_t src_data,
+               hipSurfaceObject_t dog_data,
                const int           w,
                const int           h,
                const int           max_level )
@@ -86,7 +87,7 @@ void make_dog( cudaTextureObject_t src_data,
     {
         const float b = readTex( src_data, idx, idy, level+1 );
 
-        surf2DLayeredwrite( b-a, dog_data, idx*4, idy, level, cudaBoundaryModeZero );
+        surf2DLayeredwrite( b-a, dog_data, idx*4, idy, level, hipBoundaryModeZero );
         a = b;
     }
 }
@@ -94,7 +95,7 @@ void make_dog( cudaTextureObject_t src_data,
 } // namespace gauss
 
 __host__
-inline void Pyramid::horiz_from_input_image( const Config& conf, ImageBase* base, int octave, cudaStream_t stream )
+inline void Pyramid::horiz_from_input_image( const Config& conf, ImageBase* base, int octave, hipStream_t stream )
 {
     Octave&   oct_obj = _octaves[octave];
 
@@ -113,9 +114,7 @@ inline void Pyramid::horiz_from_input_image( const Config& conf, ImageBase* base
         shift  = 0.5f * powf( 2.0f, conf.getUpscaleFactor() - octave );
     }
 
-    gauss::normalizedSource::horiz
-        <<<grid,block,0,stream>>>
-        ( base->getInputTexture(),
+    gauss::normalizedSource::hipLaunchKernelGGL(horiz, dim3(grid), dim3(block), 0, stream,  base->getInputTexture(),
           oct_obj.getIntermediateSurface(),
           width,
           height,
@@ -126,7 +125,7 @@ inline void Pyramid::horiz_from_input_image( const Config& conf, ImageBase* base
 }
 
 __host__
-inline void Pyramid::horiz_level_from_input_image( const Config& conf, ImageBase* base, int octave, int level, cudaStream_t stream )
+inline void Pyramid::horiz_level_from_input_image( const Config& conf, ImageBase* base, int octave, int level, hipStream_t stream )
 {
     if( octave != 0 )
     {
@@ -150,9 +149,7 @@ inline void Pyramid::horiz_level_from_input_image( const Config& conf, ImageBase
         shift  = 0.5f * powf( 2.0f, conf.getUpscaleFactor() - octave );
     }
 
-    gauss::normalizedSource::horiz_level
-        <<<grid,block,0,stream>>>
-        ( base->getInputTexture(),
+    gauss::normalizedSource::hipLaunchKernelGGL(horiz_level, dim3(grid), dim3(block), 0, stream,  base->getInputTexture(),
           oct_obj.getIntermediateSurface(),
           width,
           height,
@@ -164,7 +161,7 @@ inline void Pyramid::horiz_level_from_input_image( const Config& conf, ImageBase
 }
 
 __host__
-inline void Pyramid::horiz_all_from_input_image( const Config& conf, ImageBase* base, int octave, int startlevel, int maxlevel, cudaStream_t stream )
+inline void Pyramid::horiz_all_from_input_image( const Config& conf, ImageBase* base, int octave, int startlevel, int maxlevel, hipStream_t stream )
 {
     if( octave != 0 )
     {
@@ -188,9 +185,7 @@ inline void Pyramid::horiz_all_from_input_image( const Config& conf, ImageBase* 
         shift  = 0.5f * powf( 2.0f, conf.getUpscaleFactor() );
     }
 
-    gauss::normalizedSource::horiz_all
-        <<<grid,block,0,stream>>>
-        ( base->getInputTexture(),
+    gauss::normalizedSource::hipLaunchKernelGGL(horiz_all, dim3(grid), dim3(block), 0, stream,  base->getInputTexture(),
           oct_obj.getIntermediateSurface( ),
           width,
           height,
@@ -202,7 +197,7 @@ inline void Pyramid::horiz_all_from_input_image( const Config& conf, ImageBase* 
 
 
 __host__
-inline void Pyramid::downscale_from_prev_octave( int octave, cudaStream_t stream, Config::SiftMode mode )
+inline void Pyramid::downscale_from_prev_octave( int octave, hipStream_t stream, Config::SiftMode mode )
 {
     Octave&      oct_obj = _octaves[octave];
     Octave& prev_oct_obj = _octaves[octave-1];
@@ -220,9 +215,7 @@ inline void Pyramid::downscale_from_prev_octave( int octave, cudaStream_t stream
     case Config::PopSift :
     case Config::VLFeat :
     case Config::OpenCV :
-        gauss::get_by_2_pick_every_second
-            <<<h_grid,h_block,0,stream>>>
-            ( prev_oct_obj.getDataTexPoint( ),
+        gauss::hipLaunchKernelGGL(get_by_2_pick_every_second, dim3(h_grid), dim3(h_block), 0, stream,  prev_oct_obj.getDataTexPoint( ),
               prev_oct_obj.getWidth(),
               prev_oct_obj.getHeight(),
               _levels-PREV_LEVEL,
@@ -233,9 +226,7 @@ inline void Pyramid::downscale_from_prev_octave( int octave, cudaStream_t stream
         POP_SYNC_CHK;
         break;
     default :
-        gauss::get_by_2_interpolate
-            <<<h_grid,h_block,0,stream>>>
-            ( prev_oct_obj.getDataTexLinear( ).tex,
+        gauss::hipLaunchKernelGGL(get_by_2_interpolate, dim3(h_grid), dim3(h_block), 0, stream,  prev_oct_obj.getDataTexLinear( ).tex,
               _levels-PREV_LEVEL,
               oct_obj.getDataSurface( ),
               oct_obj.getWidth(),
@@ -247,7 +238,7 @@ inline void Pyramid::downscale_from_prev_octave( int octave, cudaStream_t stream
 }
 
 __host__
-inline void Pyramid::horiz_from_prev_level( int octave, int level, cudaStream_t stream, GaussTableChoice useInterpolatedGauss )
+inline void Pyramid::horiz_from_prev_level( int octave, int level, hipStream_t stream, GaussTableChoice useInterpolatedGauss )
 {
     Octave&      oct_obj = _octaves[octave];
 
@@ -263,9 +254,7 @@ inline void Pyramid::horiz_from_prev_level( int octave, int level, cudaStream_t 
             grid.x  = grid_divide( width,  128 );
             grid.y  = height;
 
-            gauss::absoluteSourceInterpolated::horiz
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getDataTexLinear( ).tex,
+            gauss::absoluteSourceInterpolated::hipLaunchKernelGGL(horiz, dim3(grid), dim3(block), 0, stream,  oct_obj.getDataTexLinear( ).tex,
                   oct_obj.getIntermediateSurface( ),
                   level );
         }
@@ -279,9 +268,7 @@ inline void Pyramid::horiz_from_prev_level( int octave, int level, cudaStream_t 
             grid.x  = grid_divide( width,  32 );
             grid.y  = grid_divide( height, block.y );
 
-            gauss::absoluteSource::horiz
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getDataTexPoint( ),
+            gauss::absoluteSource::hipLaunchKernelGGL(horiz, dim3(grid), dim3(block), 0, stream,  oct_obj.getDataTexPoint( ),
                   oct_obj.getIntermediateSurface( ),
                   level );
         }
@@ -298,7 +285,7 @@ inline void Pyramid::horiz_from_prev_level( int octave, int level, cudaStream_t 
 }
 
 __host__
-inline void Pyramid::vert_from_interm( int octave, int level, cudaStream_t stream, GaussTableChoice useInterpolatedGauss )
+inline void Pyramid::vert_from_interm( int octave, int level, hipStream_t stream, GaussTableChoice useInterpolatedGauss )
 {
     Octave& oct_obj = _octaves[octave];
 
@@ -317,9 +304,7 @@ inline void Pyramid::vert_from_interm( int octave, int level, cudaStream_t strea
             grid.x = (unsigned int)grid_divide( width,  block.y );
             grid.y = (unsigned int)grid_divide( height, block.x );
 
-            gauss::absoluteSourceInterpolated::vert
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getIntermDataTexLinear( ).tex,
+            gauss::absoluteSourceInterpolated::hipLaunchKernelGGL(vert, dim3(grid), dim3(block), 0, stream,  oct_obj.getIntermDataTexLinear( ).tex,
                   oct_obj.getDataSurface( ),
                   level );
         }
@@ -331,9 +316,7 @@ inline void Pyramid::vert_from_interm( int octave, int level, cudaStream_t strea
             grid.x = (unsigned int)grid_divide( width,  block.y );
             grid.y = (unsigned int)grid_divide( height, block.x );
 
-            gauss::absoluteSourceInterpolated::vert_abs0
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getIntermDataTexLinear( ).tex,
+            gauss::absoluteSourceInterpolated::hipLaunchKernelGGL(vert_abs0, dim3(grid), dim3(block), 0, stream,  oct_obj.getIntermDataTexLinear( ).tex,
                   oct_obj.getDataSurface( ),
                   level );
         }
@@ -345,9 +328,7 @@ inline void Pyramid::vert_from_interm( int octave, int level, cudaStream_t strea
             grid.x = (unsigned int)grid_divide( width,  block.x );
             grid.y = (unsigned int)grid_divide( height, block.y );
 
-            gauss::absoluteSource::vert
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getIntermDataTexPoint( ),
+            gauss::absoluteSource::hipLaunchKernelGGL(vert, dim3(grid), dim3(block), 0, stream,  oct_obj.getIntermDataTexPoint( ),
                   oct_obj.getDataSurface( ),
                   level );
         }
@@ -359,9 +340,7 @@ inline void Pyramid::vert_from_interm( int octave, int level, cudaStream_t strea
             grid.x = (unsigned int)grid_divide( width,  block.x );
             grid.y = (unsigned int)grid_divide( height, block.y );
 
-            gauss::absoluteSource::vert_abs0
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getIntermDataTexPoint( ),
+            gauss::absoluteSource::hipLaunchKernelGGL(vert_abs0, dim3(grid), dim3(block), 0, stream,  oct_obj.getIntermDataTexPoint( ),
                   oct_obj.getDataSurface( ),
                   level );
         }
@@ -376,7 +355,7 @@ inline void Pyramid::vert_from_interm( int octave, int level, cudaStream_t strea
 }
 
 __host__
-inline void Pyramid::vert_all_from_interm( int octave, int start_level, int max_level, cudaStream_t stream, GaussTableChoice useInterpolatedGauss )
+inline void Pyramid::vert_all_from_interm( int octave, int start_level, int max_level, hipStream_t stream, GaussTableChoice useInterpolatedGauss )
 {
     Octave& oct_obj = _octaves[octave];
 
@@ -395,9 +374,7 @@ inline void Pyramid::vert_all_from_interm( int octave, int start_level, int max_
             grid.x = (unsigned int)grid_divide( width,  block.y );
             grid.y = (unsigned int)grid_divide( height, block.x );
 
-            gauss::absoluteSourceInterpolated::vert_all_abs0
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getIntermDataTexLinear( ).tex,
+            gauss::absoluteSourceInterpolated::hipLaunchKernelGGL(vert_all_abs0, dim3(grid), dim3(block), 0, stream,  oct_obj.getIntermDataTexLinear( ).tex,
                   oct_obj.getDataSurface( ),
                   start_level,
                   max_level );
@@ -410,9 +387,7 @@ inline void Pyramid::vert_all_from_interm( int octave, int start_level, int max_
             grid.x = (unsigned int)grid_divide( width,  block.x );
             grid.y = (unsigned int)grid_divide( height, block.y );
 
-            gauss::absoluteSource::vert_all_abs0
-                <<<grid,block,0,stream>>>
-                ( oct_obj.getIntermDataTexPoint( ),
+            gauss::absoluteSource::hipLaunchKernelGGL(vert_all_abs0, dim3(grid), dim3(block), 0, stream,  oct_obj.getIntermDataTexPoint( ),
                   oct_obj.getDataSurface( ),
                   start_level,
                   max_level );
@@ -430,7 +405,7 @@ inline void Pyramid::vert_all_from_interm( int octave, int start_level, int max_
 }
 
 __host__
-inline void Pyramid::dogs_from_blurred( int octave, int max_level, cudaStream_t stream )
+inline void Pyramid::dogs_from_blurred( int octave, int max_level, hipStream_t stream )
 {
     Octave&      oct_obj = _octaves[octave];
 
@@ -443,9 +418,7 @@ inline void Pyramid::dogs_from_blurred( int octave, int max_level, cudaStream_t 
     grid.y = grid_divide( height, block.y );
     grid.z = 1;
 
-    gauss::make_dog
-        <<<grid,block,0,stream>>>
-        ( oct_obj.getDataTexPoint( ),
+    gauss::hipLaunchKernelGGL(make_dog, dim3(grid), dim3(block), 0, stream,  oct_obj.getDataTexPoint( ),
           oct_obj.getDogSurface( ),
           oct_obj.getWidth(),
           oct_obj.getHeight(),
@@ -469,11 +442,11 @@ void Pyramid::build_pyramid( const Config& conf, ImageBase* base )
          << "    original pix size : " << base->u_width/base->type_size << "x" << base->u_height << endl;
 #endif // (PYRAMID_PRINT_DEBUG==1)
 
-    cudaDeviceSynchronize();
+    hipDeviceSynchronize();
 
     for( uint32_t octave=0; octave<_num_octaves; octave++ ) {
         Octave&      oct_obj = _octaves[octave];
-        cudaStream_t stream  = oct_obj.getStream();
+        hipStream_t stream  = oct_obj.getStream();
 
         if( ( conf.getScalingMode() == Config::ScaleDirect ) &&
             ( conf.getGaussMode() == Config::Fixed9 || conf.getGaussMode() == Config::Fixed15 ) ) {
@@ -582,7 +555,7 @@ void Pyramid::build_pyramid( const Config& conf, ImageBase* base )
         if( conf.getGaussMode() == Config::Fixed9 || conf.getGaussMode() == Config::Fixed15 ) {
         } else {
             Octave&      oct_obj = _octaves[octave];
-            cudaStream_t stream  = oct_obj.getStream();
+            hipStream_t stream  = oct_obj.getStream();
             dogs_from_blurred( octave, _levels, stream );
         }
     }
@@ -590,8 +563,8 @@ void Pyramid::build_pyramid( const Config& conf, ImageBase* base )
     // for( int octave=_num_octaves-1; octave>=0; octave-- )
     {
         Octave&      oct_obj = _octaves[octave];
-        cudaStream_t stream  = oct_obj.getStream();
-        cudaStreamSynchronize( stream );
+        hipStream_t stream  = oct_obj.getStream();
+        hipStreamSynchronize( stream );
     }
 }
 

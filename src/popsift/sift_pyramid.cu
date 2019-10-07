@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
 * Copyright 2016, Simula Research Laboratory
 *
@@ -119,7 +120,7 @@ Pyramid::Pyramid( const Config& config,
     int h = height;
 
     memset( &hct,         0, sizeof(ExtremaCounters) );
-    cudaMemcpyToSymbol( dct, &hct, sizeof(ExtremaCounters), 0, cudaMemcpyHostToDevice );
+    hipMemcpyToSymbol(HIP_SYMBOL(dct), &hct, sizeof(ExtremaCounters), 0, hipMemcpyHostToDevice );
 
     memset( &hbuf,        0, sizeof(ExtremaBuffers) );
     memset( &dbuf_shadow, 0, sizeof(ExtremaBuffers) );
@@ -158,10 +159,10 @@ Pyramid::Pyramid( const Config& config,
     hbuf       .ori_allocated = sz;
     dbuf_shadow.ori_allocated = sz;
 
-    cudaMemcpyToSymbol( dbuf,  &dbuf_shadow,  sizeof(ExtremaBuffers), 0, cudaMemcpyHostToDevice );
-    cudaMemcpyToSymbol( dobuf, &dobuf_shadow, sizeof(DevBuffers),     0, cudaMemcpyHostToDevice );
+    hipMemcpyToSymbol(HIP_SYMBOL(dbuf),  &dbuf_shadow,  sizeof(ExtremaBuffers), 0, hipMemcpyHostToDevice );
+    hipMemcpyToSymbol(HIP_SYMBOL(dobuf), &dobuf_shadow, sizeof(DevBuffers),     0, hipMemcpyHostToDevice );
 
-    cudaStreamCreate( &_download_stream );
+    hipStreamCreate( &_download_stream );
 }
 
 void Pyramid::resetDimensions( const Config& conf, int width, int height )
@@ -180,8 +181,8 @@ void Pyramid::reallocExtrema( int numExtrema )
 {
     if( numExtrema > hbuf.ext_allocated ) {
         numExtrema = ( ( numExtrema + 1024 ) & ( ~(1024-1) ) );
-        cudaFree( dobuf_shadow.extrema );
-        cudaFree( dobuf_shadow.features );
+        hipFree( dobuf_shadow.extrema );
+        hipFree( dobuf_shadow.features );
 
         int sz = numExtrema;
         dobuf_shadow.extrema  = popsift::cuda::malloc_devT<Extremum>( sz, __FILE__, __LINE__);
@@ -191,9 +192,9 @@ void Pyramid::reallocExtrema( int numExtrema )
 
         numExtrema *= 2;
         if( numExtrema > hbuf.ori_allocated ) {
-            cudaFreeHost( hbuf       .desc );
-            cudaFree(     dbuf_shadow.desc );
-            cudaFree(     dobuf_shadow.feat_to_ext_map );
+            hipHostFree( hbuf       .desc );
+            hipFree(     dbuf_shadow.desc );
+            hipFree(     dobuf_shadow.feat_to_ext_map );
 
             sz = numExtrema;
             hbuf       .desc             = popsift::cuda::malloc_hstT<Descriptor>( sz, __FILE__, __LINE__);
@@ -203,22 +204,22 @@ void Pyramid::reallocExtrema( int numExtrema )
             dbuf_shadow.ori_allocated = sz;
         }
 
-        cudaMemcpyToSymbol( dbuf,  &dbuf_shadow,  sizeof(ExtremaBuffers), 0, cudaMemcpyHostToDevice );
-        cudaMemcpyToSymbol( dobuf, &dobuf_shadow, sizeof(DevBuffers),     0, cudaMemcpyHostToDevice );
+        hipMemcpyToSymbol(HIP_SYMBOL(dbuf),  &dbuf_shadow,  sizeof(ExtremaBuffers), 0, hipMemcpyHostToDevice );
+        hipMemcpyToSymbol(HIP_SYMBOL(dobuf), &dobuf_shadow, sizeof(DevBuffers),     0, hipMemcpyHostToDevice );
     }
 }
 
 Pyramid::~Pyramid()
 {
-    cudaStreamDestroy( _download_stream );
+    hipStreamDestroy( _download_stream );
 
-    cudaFree(     dobuf_shadow.i_ext_dat[0] );
-    cudaFree(     dobuf_shadow.i_ext_off[0] );
-    cudaFree(     dobuf_shadow.features );
-    cudaFree(     dobuf_shadow.extrema );
-    cudaFreeHost( hbuf        .desc );
-    cudaFree(     dbuf_shadow .desc );
-    cudaFree(     dobuf_shadow.feat_to_ext_map );
+    hipFree(     dobuf_shadow.i_ext_dat[0] );
+    hipFree(     dobuf_shadow.i_ext_off[0] );
+    hipFree(     dobuf_shadow.features );
+    hipFree(     dobuf_shadow.extrema );
+    hipHostFree( hbuf        .desc );
+    hipFree(     dbuf_shadow .desc );
+    hipFree(     dobuf_shadow.feat_to_ext_map );
 
     delete[] _octaves;
 }
@@ -294,7 +295,7 @@ FeaturesHost* Pyramid::get_descriptors( const Config& conf )
     }
 
     dim3 grid( grid_divide( hct.ext_total, 32 ) );
-    prep_features<<<grid,32,0,_download_stream>>>( features->getDescriptors(), up_fac );
+    hipLaunchKernelGGL(prep_features, dim3(grid), dim3(32), 0, _download_stream,  features->getDescriptors(), up_fac );
     POP_SYNC_CHK;
 
     nvtxRangePushA( "register host memory" );
@@ -303,15 +304,15 @@ FeaturesHost* Pyramid::get_descriptors( const Config& conf )
     popcuda_memcpy_async( features->getFeatures(),
                           dobuf_shadow.features,
                           hct.ext_total * sizeof(Feature),
-                          cudaMemcpyDeviceToHost,
+                          hipMemcpyDeviceToHost,
                           _download_stream );
 
     popcuda_memcpy_async( features->getDescriptors(),
                           dbuf_shadow.desc,
                           hct.ori_total * sizeof(Descriptor),
-                          cudaMemcpyDeviceToHost,
+                          hipMemcpyDeviceToHost,
                           _download_stream );
-    cudaStreamSynchronize( _download_stream );
+    hipStreamSynchronize( _download_stream );
     nvtxRangePushA( "unregister host memory" );
     features->unpin( );
     nvtxRangePop();
@@ -325,25 +326,25 @@ void Pyramid::clone_device_descriptors_sub( const Config& conf, FeaturesDev* fea
     const float up_fac = conf.getUpscaleFactor();
 
     dim3 grid( grid_divide( hct.ext_total, 32 ) );
-    prep_features<<<grid,32,0,_download_stream>>>( features->getDescriptors(), up_fac );
+    hipLaunchKernelGGL(prep_features, dim3(grid), dim3(32), 0, _download_stream,  features->getDescriptors(), up_fac );
     POP_SYNC_CHK;
 
     popcuda_memcpy_async( features->getFeatures(),
                           dobuf_shadow.features,
                           hct.ext_total * sizeof(Feature),
-                          cudaMemcpyDeviceToDevice,
+                          hipMemcpyDeviceToDevice,
                           _download_stream );
 
     popcuda_memcpy_async( features->getDescriptors(),
                           dbuf_shadow.desc,
                           hct.ori_total * sizeof(Descriptor),
-                          cudaMemcpyDeviceToDevice,
+                          hipMemcpyDeviceToDevice,
                           _download_stream );
 
     popcuda_memcpy_async( features->getReverseMap(),
                           dobuf_shadow.feat_to_ext_map,
                           hct.ori_total * sizeof(int),
-                          cudaMemcpyDeviceToDevice,
+                          hipMemcpyDeviceToDevice,
                           _download_stream );
 }
 
@@ -355,7 +356,7 @@ FeaturesDev* Pyramid::clone_device_descriptors( const Config& conf )
 
     clone_device_descriptors_sub( conf, features );
 
-    cudaStreamSynchronize( _download_stream );
+    hipStreamSynchronize( _download_stream );
 
     return features;
 }
@@ -363,7 +364,7 @@ FeaturesDev* Pyramid::clone_device_descriptors( const Config& conf )
 void Pyramid::reset_extrema_mgmt()
 {
     memset( &hct,         0, sizeof(ExtremaCounters) );
-    cudaMemcpyToSymbol( dct, &hct, sizeof(ExtremaCounters), 0, cudaMemcpyHostToDevice );
+    hipMemcpyToSymbol(HIP_SYMBOL(dct), &hct, sizeof(ExtremaCounters), 0, hipMemcpyHostToDevice );
 
     popcuda_memset_sync( _d_extrema_num_blocks, 0, _num_octaves * sizeof(int) );
 
@@ -371,22 +372,22 @@ void Pyramid::reset_extrema_mgmt()
 
 void Pyramid::readDescCountersFromDevice( )
 {
-    cudaMemcpyFromSymbol( &hct, dct, sizeof(ExtremaCounters), 0, cudaMemcpyDeviceToHost );
+    hipMemcpyFromSymbol(&hct, HIP_SYMBOL(dct), sizeof(ExtremaCounters), 0, hipMemcpyDeviceToHost );
 }
 
-void Pyramid::readDescCountersFromDevice( cudaStream_t s )
+void Pyramid::readDescCountersFromDevice( hipStream_t s )
 {
-    cudaMemcpyFromSymbolAsync( &hct, dct, sizeof(ExtremaCounters), 0, cudaMemcpyDeviceToHost, s );
+    hipMemcpyFromSymbolAsync(&hct, HIP_SYMBOL(dct), sizeof(ExtremaCounters), 0, hipMemcpyDeviceToHost, s );
 }
 
 void Pyramid::writeDescCountersToDevice( )
 {
-    cudaMemcpyToSymbol( dct, &hct, sizeof(ExtremaCounters), 0, cudaMemcpyHostToDevice );
+    hipMemcpyToSymbol(HIP_SYMBOL(dct), &hct, sizeof(ExtremaCounters), 0, hipMemcpyHostToDevice );
 }
 
-void Pyramid::writeDescCountersToDevice( cudaStream_t s )
+void Pyramid::writeDescCountersToDevice( hipStream_t s )
 {
-    cudaMemcpyToSymbolAsync( dct, &hct, sizeof(ExtremaCounters), 0, cudaMemcpyHostToDevice, s );
+    hipMemcpyToSymbolAsync(HIP_SYMBOL(dct), &hct, sizeof(ExtremaCounters), 0, hipMemcpyHostToDevice, s );
 }
 
 int* Pyramid::getNumberOfBlocks( int octave )

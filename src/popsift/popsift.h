@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <vector>
 #include <stack>
 #include <queue>

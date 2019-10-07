@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -22,7 +23,7 @@ void ext_desc_grid_sub( const int           ix,
                         const float         ang,
                         const Extremum*     ext,
                         float* __restrict__ features,
-                        cudaTextureObject_t layer_tex )
+                        hipTextureObject_t layer_tex )
 {
     const int tile = ( ( ( iy << 2 ) + ix ) << 3 ); // base of the 8 floats written by this group of 16 threads
 
@@ -124,7 +125,7 @@ void ext_desc_grid_sub( const int           ix,
 
 __global__
 void ext_desc_grid( const int           octave,
-                    cudaTextureObject_t layer_tex )
+                    hipTextureObject_t layer_tex )
 {
     const int   o_offset =  dct.ori_ps[octave] + blockIdx.x;
     const int   ix       = threadIdx.y;

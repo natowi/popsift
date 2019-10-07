@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -16,7 +17,7 @@
 
 __global__
 void ext_desc_loop( const int           octave,
-                    cudaTextureObject_t layer_tex,
+                    hipTextureObject_t layer_tex,
                     const int           width,
                     const int           height );
 
@@ -43,9 +44,7 @@ inline static bool start_ext_desc_loop( const int octave, Octave& oct_obj )
     block.z = 16;
 #endif
 
-    ext_desc_loop
-        <<<grid,block,0,oct_obj.getStream()>>>
-        ( octave,
+    hipLaunchKernelGGL(ext_desc_loop, dim3(grid), dim3(block), 0, oct_obj.getStream(),  octave,
           oct_obj.getDataTexPoint( ),
           oct_obj.getWidth(),
           oct_obj.getHeight() );

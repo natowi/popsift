@@ -114,7 +114,7 @@ bool PopSift::private_init( int w, int h )
                                        ceilf( w * scaleFactor ),
                                        ceilf( h * scaleFactor ) );
 
-    cudaDeviceSynchronize();
+    hipDeviceSynchronize();
 
     return true;
 }
@@ -196,7 +196,7 @@ void PopSift::extractDownloadLoop( )
 
         popsift::FeaturesHost* features = p._pyramid->get_descriptors( _config );
 
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 
         bool log_to_file = ( _config.getLogMode() == popsift::Config::All );
         if( log_to_file ) {
@@ -229,7 +229,7 @@ void PopSift::matchPrepareLoop( )
 
         popsift::FeaturesDev* features = p._pyramid->clone_device_descriptors( _config );
 
-        cudaDeviceSynchronize();
+        hipDeviceSynchronize();
 
         job->setFeatures( features );
     }

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -15,8 +16,8 @@ namespace gauss {
 namespace normalizedSource {
 
 __global__
-void horiz( cudaTextureObject_t src_linear_tex,
-            cudaSurfaceObject_t dst_data,
+void horiz( hipTextureObject_t src_linear_tex,
+            hipSurfaceObject_t dst_data,
             int                 dst_w,
             int                 dst_h,
             int                 octave,
@@ -51,12 +52,12 @@ void horiz( cudaTextureObject_t src_linear_tex,
     const float v3 = tex2D<float>( src_linear_tex, read_x, read_y );
     out += ( v3 * g );
 
-    surf2DLayeredwrite( out * 255.0f, dst_data, write_x*4, write_y, 0, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out * 255.0f, dst_data, write_x*4, write_y, 0, hipBoundaryModeZero );
 }
 
 __global__
-void horiz_level( cudaTextureObject_t src_linear_tex,
-                  cudaSurfaceObject_t dst_data,
+void horiz_level( hipTextureObject_t src_linear_tex,
+                  hipSurfaceObject_t dst_data,
                   int                 dst_w,
                   int                 dst_h,
                   int                 /* octave */,
@@ -87,12 +88,12 @@ void horiz_level( cudaTextureObject_t src_linear_tex,
     const float  v3 = tex2D<float>( src_linear_tex, read_x, read_y );
     out += ( v3 * g );
 
-    surf2DLayeredwrite( out * 255.0f, dst_data, write_x*4, write_y, level, cudaBoundaryModeZero );
+    surf2DLayeredwrite( out * 255.0f, dst_data, write_x*4, write_y, level, hipBoundaryModeZero );
 }
 
 __global__
-void horiz_all( cudaTextureObject_t src_linear_tex,
-                cudaSurfaceObject_t dst_data,
+void horiz_all( hipTextureObject_t src_linear_tex,
+                hipSurfaceObject_t dst_data,
                 int                 dst_w,
                 int                 dst_h,
                 float               shift,
@@ -124,7 +125,7 @@ void horiz_all( cudaTextureObject_t src_linear_tex,
         const float  v3 = tex2D<float>( src_linear_tex, read_x, read_y );
         out += ( v3 * g );
 
-        surf2DLayeredwrite( out * 255.0f, dst_data, write_x*4, write_y, dst_level, cudaBoundaryModeZero );
+        surf2DLayeredwrite( out * 255.0f, dst_data, write_x*4, write_y, dst_level, hipBoundaryModeZero );
     }
 }
 

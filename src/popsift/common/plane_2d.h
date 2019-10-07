@@ -11,7 +11,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -60,20 +60,20 @@ struct PlaneBase
     void memcpyToDevice( void* dst, int dst_pitch, void* src, int src_pitch, short cols, short rows, int elemSize );
 
     __host__
-    void memcpyToDevice( void* dst, int dst_pitch, void* src, int src_pitch, short cols, short rows, int elemSize, cudaStream_t stream );
+    void memcpyToDevice( void* dst, int dst_pitch, void* src, int src_pitch, short cols, short rows, int elemSize, hipStream_t stream );
 
     __host__
     void memcpyToHost( void* dst, int dst_pitch, void* src, int src_pitch, short cols, short rows, int elemSize );
 
     __host__
-    void memcpyToHost( void* dst, int dst_pitch, void* src, int src_pitch, short cols, short rows, int elemSize, cudaStream_t stream );
+    void memcpyToHost( void* dst, int dst_pitch, void* src, int src_pitch, short cols, short rows, int elemSize, hipStream_t stream );
 
 #ifdef PLANE2D_CUDA_OP_DEBUG
     __host__
-    void waitAndCheck( cudaStream_t stream ) const;
+    void waitAndCheck( hipStream_t stream ) const;
 #else // not PLANE2D_CUDA_OP_DEBUG
     __host__
-    inline void waitAndCheck( cudaStream_t stream ) const { }
+    inline void waitAndCheck( hipStream_t stream ) const { }
 #endif // not PLANE2D_CUDA_OP_DEBUG
 };
 
@@ -117,28 +117,28 @@ template <typename T> struct PitchPlane2D : public PlaneT<T>
     __host__ inline void memcpyToDevice( PitchPlane2D<T>& devPlane,
                                          short cols, short rows );
     __host__ inline void memcpyToDevice( PitchPlane2D<T>& devPlane,
-                                         short cols, short rows, cudaStream_t stream );
+                                         short cols, short rows, hipStream_t stream );
 
     /** cuda memcpy from parameter (plane allocated on host) to
      *  this (plane allocated on device) */
     __host__ inline void memcpyFromHost( PitchPlane2D<T>& hostPlane,
                                          short cols, short rows );
     __host__ inline void memcpyFromHost( PitchPlane2D<T>& hostPlane,
-                                         short cols, short rows, cudaStream_t stream );
+                                         short cols, short rows, hipStream_t stream );
 
     /** cuda memcpy from parameter (plane allocated on device) to
      *  this (plane allocated on host) */
     __host__ inline void memcpyFromDevice( PitchPlane2D<T>& devPlane,
                                            short cols, short rows );
     __host__ inline void memcpyFromDevice( PitchPlane2D<T>& devPlane,
-                                           short cols, short rows, cudaStream_t stream );
+                                           short cols, short rows, hipStream_t stream );
 
     /** cuda memcpy from this (plane allocated on device) to
      *  parameter (plane allocated on host) */
     __host__ inline void memcpyToHost( PitchPlane2D<T>& hostPlane,
                                        short cols, short rows );
     __host__ inline void memcpyToHost( PitchPlane2D<T>& hostPlane,
-                                       short cols, short rows, cudaStream_t stream );
+                                       short cols, short rows, hipStream_t stream );
 
     __host__ __device__ inline const T* ptr( int y ) const {
         return (const T*)( (const char*)this->data + y * _pitchInBytes );
@@ -192,7 +192,7 @@ inline void PitchPlane2D<T>::memcpyToDevice( PitchPlane2D<T>& devPlane, short co
 
 template <typename T>
 __host__
-inline void PitchPlane2D<T>::memcpyToDevice( PitchPlane2D<T>& devPlane, short cols, short rows, cudaStream_t stream )
+inline void PitchPlane2D<T>::memcpyToDevice( PitchPlane2D<T>& devPlane, short cols, short rows, hipStream_t stream )
 {
     PlaneBase::memcpyToDevice( devPlane.data, devPlane._pitchInBytes,
                                this->data, this->_pitchInBytes,
@@ -210,7 +210,7 @@ inline void PitchPlane2D<T>::memcpyFromHost( PitchPlane2D<T>& hostPlane, short c
 
 template <typename T>
 __host__
-inline void PitchPlane2D<T>::memcpyFromHost( PitchPlane2D<T>& hostPlane, short cols, short rows, cudaStream_t stream )
+inline void PitchPlane2D<T>::memcpyFromHost( PitchPlane2D<T>& hostPlane, short cols, short rows, hipStream_t stream )
 {
     hostPlane.memcpyToDevice( *this, cols, rows, stream );
 }
@@ -227,7 +227,7 @@ inline void PitchPlane2D<T>::memcpyFromDevice( PitchPlane2D<T>& devPlane, short 
 
 template <typename T>
 __host__
-inline void PitchPlane2D<T>::memcpyFromDevice( PitchPlane2D<T>& devPlane, short cols, short rows, cudaStream_t stream )
+inline void PitchPlane2D<T>::memcpyFromDevice( PitchPlane2D<T>& devPlane, short cols, short rows, hipStream_t stream )
 {
     PlaneBase::memcpyToHost( this->data, this->_pitchInBytes,
                              devPlane.data, devPlane._pitchInBytes,
@@ -245,7 +245,7 @@ inline void PitchPlane2D<T>::memcpyToHost( PitchPlane2D<T>& hostPlane, short col
 
 template <typename T>
 __host__
-inline void PitchPlane2D<T>::memcpyToHost( PitchPlane2D<T>& hostPlane, short cols, short rows, cudaStream_t stream )
+inline void PitchPlane2D<T>::memcpyToHost( PitchPlane2D<T>& hostPlane, short cols, short rows, hipStream_t stream )
 {
     hostPlane.memcpyFromDevice( *this, cols, rows, stream );
 }
@@ -305,29 +305,29 @@ public:
      *  parameter (plane allocated on device) */
     __host__ inline void memcpyToDevice( Plane2D<T>& devPlane );
     __host__ inline void memcpyToDevice( PitchPlane2D<T>& devPlane );
-    __host__ inline void memcpyToDevice( Plane2D<T>& devPlane, cudaStream_t stream );
-    __host__ inline void memcpyToDevice( PitchPlane2D<T>& devPlane, cudaStream_t stream );
+    __host__ inline void memcpyToDevice( Plane2D<T>& devPlane, hipStream_t stream );
+    __host__ inline void memcpyToDevice( PitchPlane2D<T>& devPlane, hipStream_t stream );
 
     /** cuda memcpy from parameter (plane allocated on host) to
      *  this (plane allocated on device) */
     __host__ inline void memcpyFromHost( Plane2D<T>& hostPlane );
-    __host__ inline void memcpyFromHost( Plane2D<T>& hostPlane, cudaStream_t stream );
+    __host__ inline void memcpyFromHost( Plane2D<T>& hostPlane, hipStream_t stream );
     __host__ inline void memcpyFromHost( PitchPlane2D<T>& hostPlane );
-    __host__ inline void memcpyFromHost( PitchPlane2D<T>& hostPlane, cudaStream_t stream );
+    __host__ inline void memcpyFromHost( PitchPlane2D<T>& hostPlane, hipStream_t stream );
 
     /** cuda memcpy from parameter (plane allocated on device) to
      *  this (plane allocated on host) */
     __host__ inline void memcpyFromDevice( Plane2D<T>& devPlane );
     __host__ inline void memcpyFromDevice( PitchPlane2D<T>& devPlane );
-    __host__ inline void memcpyFromDevice( Plane2D<T>& devPlane, cudaStream_t stream );
-    __host__ inline void memcpyFromDevice( PitchPlane2D<T>& devPlane, cudaStream_t stream );
+    __host__ inline void memcpyFromDevice( Plane2D<T>& devPlane, hipStream_t stream );
+    __host__ inline void memcpyFromDevice( PitchPlane2D<T>& devPlane, hipStream_t stream );
 
     /** cuda memcpy from this (plane allocated on device) to
      *  parameter (plane allocated on host) */
     __host__ inline void memcpyToHost( Plane2D<T>& hostPlane );
-    __host__ inline void memcpyToHost( Plane2D<T>& hostPlane, cudaStream_t stream );
+    __host__ inline void memcpyToHost( Plane2D<T>& hostPlane, hipStream_t stream );
     __host__ inline void memcpyToHost( PitchPlane2D<T>& hostPlane );
-    __host__ inline void memcpyToHost( PitchPlane2D<T>& hostPlane, cudaStream_t stream );
+    __host__ inline void memcpyToHost( PitchPlane2D<T>& hostPlane, hipStream_t stream );
 
     __host__ __device__
     inline short getCols( ) const { return _cols; }
@@ -404,7 +404,7 @@ inline void Plane2D<T>::memcpyToDevice( PitchPlane2D<T>& devPlane )
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyToDevice( Plane2D<T>& devPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyToDevice( Plane2D<T>& devPlane, hipStream_t stream )
 {
     if( devPlane._cols != this->_cols ) {
         std::cerr << __FILE__ << ":" << __LINE__ << std::endl
@@ -421,7 +421,7 @@ inline void Plane2D<T>::memcpyToDevice( Plane2D<T>& devPlane, cudaStream_t strea
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyToDevice( PitchPlane2D<T>& devPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyToDevice( PitchPlane2D<T>& devPlane, hipStream_t stream )
 {
     PitchPlane2D<T>::memcpyToDevice( devPlane, this->_cols, this->_rows, stream );
 }
@@ -442,14 +442,14 @@ inline void Plane2D<T>::memcpyFromHost( PitchPlane2D<T>& hostPlane )
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyFromHost( Plane2D<T>& hostPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyFromHost( Plane2D<T>& hostPlane, hipStream_t stream )
 {
     hostPlane.memcpyToDevice( *this, stream );
 }
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyFromHost( PitchPlane2D<T>& hostPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyFromHost( PitchPlane2D<T>& hostPlane, hipStream_t stream )
 {
     hostPlane.memcpyToDevice( *this, this->_cols, this->_rows, stream );
 }
@@ -472,7 +472,7 @@ inline void Plane2D<T>::memcpyFromDevice( PitchPlane2D<T>& devPlane )
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyFromDevice( Plane2D<T>& devPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyFromDevice( Plane2D<T>& devPlane, hipStream_t stream )
 {
     assert( devPlane._cols == this->_cols );
     assert( devPlane._rows == this->_rows );
@@ -481,7 +481,7 @@ inline void Plane2D<T>::memcpyFromDevice( Plane2D<T>& devPlane, cudaStream_t str
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyFromDevice( PitchPlane2D<T>& devPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyFromDevice( PitchPlane2D<T>& devPlane, hipStream_t stream )
 {
     PitchPlane2D<T>::memcpyFromDevice( devPlane, this->_cols, this->_rows, stream );
 }
@@ -502,14 +502,14 @@ inline void Plane2D<T>::memcpyToHost( PitchPlane2D<T>& hostPlane )
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyToHost( Plane2D<T>& hostPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyToHost( Plane2D<T>& hostPlane, hipStream_t stream )
 {
     hostPlane.memcpyFromDevice( *this, stream );
 }
 
 template <typename T>
 __host__
-inline void Plane2D<T>::memcpyToHost( PitchPlane2D<T>& hostPlane, cudaStream_t stream )
+inline void Plane2D<T>::memcpyToHost( PitchPlane2D<T>& hostPlane, hipStream_t stream )
 {
     hostPlane.memcpyFromDevice( *this, this->_cols, this->_rows, stream );
 }

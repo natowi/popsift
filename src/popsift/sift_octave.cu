@@ -111,7 +111,7 @@ void Octave::download_and_save_array( const char* basename, int octave )
 {
     struct stat st = { 0 };
 
-    cudaError_t err;
+    hipError_t err;
     int width  = getWidth();
     int height = getHeight();
 
@@ -138,14 +138,14 @@ void Octave::download_and_save_array( const char* basename, int octave )
     float* array;
     POP_CUDA_MALLOC_HOST(&array, width * height * _levels * sizeof(float));
 
-    cudaMemcpy3DParms s = { 0 };
-    memset( &s, 0, sizeof(cudaMemcpy3DParms) );
+    hipMemcpy3DParms s = { 0 };
+    memset( &s, 0, sizeof(hipMemcpy3DParms) );
     s.srcArray = _data;
-    s.dstPtr   = make_cudaPitchedPtr( array, width * sizeof(float), width, height );
-    s.extent   = make_cudaExtent( width, height, _levels );
-    s.kind     = cudaMemcpyDeviceToHost;
-    err = cudaMemcpy3D(&s);
-    POP_CUDA_FATAL_TEST(err, "cudaMemcpy3D failed: ");
+    s.dstPtr   = make_hipPitchedPtr( array, width * sizeof(float), width, height );
+    s.extent   = make_hipExtent( width, height, _levels );
+    s.kind     = hipMemcpyDeviceToHost;
+    err = hipMemcpy3D(&s);
+    POP_CUDA_FATAL_TEST(err, "hipMemcpy3D failed: ");
 
     for( int l = 0; l<_levels; l++ ) {
         Plane2D_float p(width, height, &array[l*width*height], width * sizeof(float));
@@ -159,13 +159,13 @@ void Octave::download_and_save_array( const char* basename, int octave )
         popsift::dump_plane2Dfloat(ostr2.str().c_str(), false, p );
     }
 
-    memset( &s, 0, sizeof(cudaMemcpy3DParms) );
+    memset( &s, 0, sizeof(hipMemcpy3DParms) );
     s.srcArray = _dog_3d;
-    s.dstPtr = make_cudaPitchedPtr(array, width * sizeof(float), width, height);
-    s.extent = make_cudaExtent(width, height, _levels - 1);
-    s.kind = cudaMemcpyDeviceToHost;
-    err = cudaMemcpy3D(&s);
-    POP_CUDA_FATAL_TEST(err, "cudaMemcpy3D failed: ");
+    s.dstPtr = make_hipPitchedPtr(array, width * sizeof(float), width, height);
+    s.extent = make_hipExtent(width, height, _levels - 1);
+    s.kind = hipMemcpyDeviceToHost;
+    err = hipMemcpy3D(&s);
+    POP_CUDA_FATAL_TEST(err, "hipMemcpy3D failed: ");
 
     for (int l = 0; l<_levels - 1; l++) {
         Plane2D_float p(width, height, &array[l*width*height], width * sizeof(float));
@@ -188,224 +188,224 @@ void Octave::download_and_save_array( const char* basename, int octave )
 
 void Octave::alloc_data_planes()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    _data_desc.f = cudaChannelFormatKindFloat;
+    _data_desc.f = hipChannelFormatKindFloat;
     _data_desc.x = 32;
     _data_desc.y = 0;
     _data_desc.z = 0;
     _data_desc.w = 0;
 
-    _data_ext.width  = _w; // for cudaMalloc3DArray, width in elements
+    _data_ext.width  = _w; // for hipMalloc3DArray, width in elements
     _data_ext.height = _h;
     _data_ext.depth  = _levels;
 
-    err = cudaMalloc3DArray( &_data,
+    err = hipMalloc3DArray( &_data,
                              &_data_desc,
                              _data_ext,
-                             cudaArrayLayered | cudaArraySurfaceLoadStore);
+                             hipArrayLayered | hipArraySurfaceLoadStore);
     POP_CUDA_FATAL_TEST(err, "Could not allocate Blur level array: ");
 }
 
 void Octave::free_data_planes()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    err = cudaFreeArray( _data );
+    err = hipFreeArray( _data );
     POP_CUDA_FATAL_TEST(err, "Could not free Blur level array: ");
 }
 
 void Octave::alloc_data_tex()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    cudaResourceDesc res_desc;
-    res_desc.resType = cudaResourceTypeArray;
+    hipResourceDesc res_desc;
+    res_desc.resType = hipResourceTypeArray;
     res_desc.res.array.array = _data;
 
-    err = cudaCreateSurfaceObject(&_data_surf, &res_desc);
+    err = hipCreateSurfaceObject(&_data_surf, &res_desc);
     POP_CUDA_FATAL_TEST(err, "Could not create Blur data surface: ");
 
-    cudaTextureDesc      tex_desc;
+    hipTextureDesc      tex_desc;
 
-    memset(&tex_desc, 0, sizeof(cudaTextureDesc));
+    memset(&tex_desc, 0, sizeof(hipTextureDesc));
     tex_desc.normalizedCoords = 0; // addressed (x,y) in [width,height]
-    tex_desc.addressMode[0]   = cudaAddressModeClamp;
-    tex_desc.addressMode[1]   = cudaAddressModeClamp;
-    tex_desc.addressMode[2]   = cudaAddressModeClamp;
-    tex_desc.readMode         = cudaReadModeElementType; // read as float
-    tex_desc.filterMode       = cudaFilterModePoint; // no interpolation
+    tex_desc.addressMode[0]   = hipAddressModeClamp;
+    tex_desc.addressMode[1]   = hipAddressModeClamp;
+    tex_desc.addressMode[2]   = hipAddressModeClamp;
+    tex_desc.readMode         = hipReadModeElementType; // read as float
+    tex_desc.filterMode       = hipFilterModePoint; // no interpolation
 
-    err = cudaCreateTextureObject( &_data_tex_point, &res_desc, &tex_desc, 0 );
+    err = hipCreateTextureObject( &_data_tex_point, &res_desc, &tex_desc, 0 );
     POP_CUDA_FATAL_TEST(err, "Could not create Blur data point texture: ");
 
-    memset(&tex_desc, 0, sizeof(cudaTextureDesc));
+    memset(&tex_desc, 0, sizeof(hipTextureDesc));
     tex_desc.normalizedCoords = 0; // addressed (x,y) in [width,height]
-    tex_desc.addressMode[0]   = cudaAddressModeClamp;
-    tex_desc.addressMode[1]   = cudaAddressModeClamp;
-    tex_desc.addressMode[2]   = cudaAddressModeClamp;
-    tex_desc.readMode         = cudaReadModeElementType; // read as float
-    tex_desc.filterMode       = cudaFilterModeLinear; // no interpolation
+    tex_desc.addressMode[0]   = hipAddressModeClamp;
+    tex_desc.addressMode[1]   = hipAddressModeClamp;
+    tex_desc.addressMode[2]   = hipAddressModeClamp;
+    tex_desc.readMode         = hipReadModeElementType; // read as float
+    tex_desc.filterMode       = hipFilterModeLinear; // no interpolation
 
-    err = cudaCreateTextureObject( &_data_tex_linear.tex, &res_desc, &tex_desc, 0 );
+    err = hipCreateTextureObject( &_data_tex_linear.tex, &res_desc, &tex_desc, 0 );
     POP_CUDA_FATAL_TEST(err, "Could not create Blur data point texture: ");
 }
 
 void Octave::free_data_tex()
 {
-        cudaError_t err;
+        hipError_t err;
 
-        err = cudaDestroyTextureObject(_data_tex_point);
+        err = hipDestroyTextureObject(_data_tex_point);
         POP_CUDA_FATAL_TEST(err, "Could not destroy Blur data point texture: ");
 
-        err = cudaDestroyTextureObject(_data_tex_linear.tex);
+        err = hipDestroyTextureObject(_data_tex_linear.tex);
         POP_CUDA_FATAL_TEST(err, "Could not destroy Blur data linear texture: ");
 
-        err = cudaDestroySurfaceObject(_data_surf);
+        err = hipDestroySurfaceObject(_data_surf);
         POP_CUDA_FATAL_TEST(err, "Could not destroy Blur data surface: ");
 }
 
 void Octave::alloc_interm_array()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    _intm_desc.f = cudaChannelFormatKindFloat;
+    _intm_desc.f = hipChannelFormatKindFloat;
     _intm_desc.x = 32;
     _intm_desc.y = 0;
     _intm_desc.z = 0;
     _intm_desc.w = 0;
 
-    _intm_ext.width  = _w; // for cudaMalloc3DArray, width in elements
+    _intm_ext.width  = _w; // for hipMalloc3DArray, width in elements
     _intm_ext.height = _h;
     _intm_ext.depth  = _levels;
 
-    err = cudaMalloc3DArray( &_intm,
+    err = hipMalloc3DArray( &_intm,
                              &_intm_desc,
                              _intm_ext,
-                             cudaArrayLayered | cudaArraySurfaceLoadStore);
+                             hipArrayLayered | hipArraySurfaceLoadStore);
     POP_CUDA_FATAL_TEST(err, "Could not allocate Intermediate layered array: ");
 }
 
 void Octave::free_interm_array()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    err = cudaFreeArray( _intm );
+    err = hipFreeArray( _intm );
     POP_CUDA_FATAL_TEST(err, "Could not free Intermediate layered array: ");
 }
 
 void Octave::alloc_interm_tex()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    cudaResourceDesc res_desc;
-    res_desc.resType = cudaResourceTypeArray;
+    hipResourceDesc res_desc;
+    res_desc.resType = hipResourceTypeArray;
     res_desc.res.array.array = _intm;
 
-    err = cudaCreateSurfaceObject(&_intm_surf, &res_desc);
+    err = hipCreateSurfaceObject(&_intm_surf, &res_desc);
     POP_CUDA_FATAL_TEST(err, "Could not create Blur intermediate surface: ");
 
-    cudaTextureDesc      tex_desc;
+    hipTextureDesc      tex_desc;
 
-    memset(&tex_desc, 0, sizeof(cudaTextureDesc));
+    memset(&tex_desc, 0, sizeof(hipTextureDesc));
     tex_desc.normalizedCoords = 0; // addressed (x,y) in [width,height]
-    tex_desc.addressMode[0]   = cudaAddressModeClamp;
-    tex_desc.addressMode[1]   = cudaAddressModeClamp;
-    tex_desc.addressMode[2]   = cudaAddressModeClamp;
-    tex_desc.readMode         = cudaReadModeElementType; // read as float
-    tex_desc.filterMode       = cudaFilterModePoint; // no interpolation
+    tex_desc.addressMode[0]   = hipAddressModeClamp;
+    tex_desc.addressMode[1]   = hipAddressModeClamp;
+    tex_desc.addressMode[2]   = hipAddressModeClamp;
+    tex_desc.readMode         = hipReadModeElementType; // read as float
+    tex_desc.filterMode       = hipFilterModePoint; // no interpolation
 
-    err = cudaCreateTextureObject( &_intm_tex_point, &res_desc, &tex_desc, 0 );
+    err = hipCreateTextureObject( &_intm_tex_point, &res_desc, &tex_desc, 0 );
     POP_CUDA_FATAL_TEST(err, "Could not create Blur intermediate point texture: ");
 
-    tex_desc.filterMode       = cudaFilterModeLinear; // no interpolation
+    tex_desc.filterMode       = hipFilterModeLinear; // no interpolation
 
-    err = cudaCreateTextureObject( &_intm_tex_linear.tex, &res_desc, &tex_desc, 0 );
+    err = hipCreateTextureObject( &_intm_tex_linear.tex, &res_desc, &tex_desc, 0 );
     POP_CUDA_FATAL_TEST(err, "Could not create Blur intermediate point texture: ");
 }
 
 void Octave::free_interm_tex()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    err = cudaDestroyTextureObject(_intm_tex_point);
+    err = hipDestroyTextureObject(_intm_tex_point);
     POP_CUDA_FATAL_TEST(err, "Could not destroy Blur intermediate point texture: ");
 
-    err = cudaDestroyTextureObject(_intm_tex_linear.tex);
+    err = hipDestroyTextureObject(_intm_tex_linear.tex);
     POP_CUDA_FATAL_TEST(err, "Could not destroy Blur intermediate linear texture: ");
 
-    err = cudaDestroySurfaceObject(_intm_surf);
+    err = hipDestroySurfaceObject(_intm_surf);
     POP_CUDA_FATAL_TEST(err, "Could not destroy Blur intermediate surface: ");
 }
 
 void Octave::alloc_dog_array()
 {
-        cudaError_t err;
+        hipError_t err;
 
-        _dog_3d_desc.f = cudaChannelFormatKindFloat;
+        _dog_3d_desc.f = hipChannelFormatKindFloat;
         _dog_3d_desc.x = 32;
         _dog_3d_desc.y = 0;
         _dog_3d_desc.z = 0;
         _dog_3d_desc.w = 0;
 
-        _dog_3d_ext.width = _w; // for cudaMalloc3DArray, width in elements
+        _dog_3d_ext.width = _w; // for hipMalloc3DArray, width in elements
         _dog_3d_ext.height = _h;
         _dog_3d_ext.depth = _levels - 1;
 
-        err = cudaMalloc3DArray(&_dog_3d,
+        err = hipMalloc3DArray(&_dog_3d,
             &_dog_3d_desc,
             _dog_3d_ext,
-            cudaArrayLayered | cudaArraySurfaceLoadStore);
+            hipArrayLayered | hipArraySurfaceLoadStore);
         POP_CUDA_FATAL_TEST(err, "Could not allocate 3D DoG array: ");
 }
 
 void Octave::free_dog_array()
 {
-        cudaError_t err;
+        hipError_t err;
 
-        err = cudaFreeArray(_dog_3d);
+        err = hipFreeArray(_dog_3d);
         POP_CUDA_FATAL_TEST(err, "Could not free 3D DoG array: ");
 }
 
 void Octave::alloc_dog_tex()
 {
-        cudaError_t err;
+        hipError_t err;
 
-        cudaResourceDesc dog_res_desc;
-        dog_res_desc.resType = cudaResourceTypeArray;
+        hipResourceDesc dog_res_desc;
+        dog_res_desc.resType = hipResourceTypeArray;
         dog_res_desc.res.array.array = _dog_3d;
 
-        err = cudaCreateSurfaceObject(&_dog_3d_surf, &dog_res_desc);
+        err = hipCreateSurfaceObject(&_dog_3d_surf, &dog_res_desc);
         POP_CUDA_FATAL_TEST(err, "Could not create DoG surface: ");
 
-        cudaTextureDesc      dog_tex_desc;
-        memset(&dog_tex_desc, 0, sizeof(cudaTextureDesc));
+        hipTextureDesc      dog_tex_desc;
+        memset(&dog_tex_desc, 0, sizeof(hipTextureDesc));
         dog_tex_desc.normalizedCoords = 0; // addressed (x,y) in [width,height]
-        dog_tex_desc.addressMode[0] = cudaAddressModeClamp;
-        dog_tex_desc.addressMode[1] = cudaAddressModeClamp;
-        dog_tex_desc.addressMode[2] = cudaAddressModeClamp;
-        dog_tex_desc.readMode = cudaReadModeElementType; // read as float
-        dog_tex_desc.filterMode = cudaFilterModePoint; // no interpolation
+        dog_tex_desc.addressMode[0] = hipAddressModeClamp;
+        dog_tex_desc.addressMode[1] = hipAddressModeClamp;
+        dog_tex_desc.addressMode[2] = hipAddressModeClamp;
+        dog_tex_desc.readMode = hipReadModeElementType; // read as float
+        dog_tex_desc.filterMode = hipFilterModePoint; // no interpolation
 
-        err = cudaCreateTextureObject(&_dog_3d_tex_point, &dog_res_desc, &dog_tex_desc, 0);
+        err = hipCreateTextureObject(&_dog_3d_tex_point, &dog_res_desc, &dog_tex_desc, 0);
         POP_CUDA_FATAL_TEST(err, "Could not create DoG texture: ");
 
-        dog_tex_desc.filterMode = cudaFilterModeLinear; // linear interpolation
-        err = cudaCreateTextureObject(&_dog_3d_tex_linear.tex, &dog_res_desc, &dog_tex_desc, 0);
+        dog_tex_desc.filterMode = hipFilterModeLinear; // linear interpolation
+        err = hipCreateTextureObject(&_dog_3d_tex_linear.tex, &dog_res_desc, &dog_tex_desc, 0);
         POP_CUDA_FATAL_TEST(err, "Could not create DoG texture: ");
 }
 
 void Octave::free_dog_tex()
 {
-    cudaError_t err;
+    hipError_t err;
 
-    err = cudaDestroyTextureObject(_dog_3d_tex_linear.tex);
+    err = hipDestroyTextureObject(_dog_3d_tex_linear.tex);
     POP_CUDA_FATAL_TEST(err, "Could not destroy DoG texture: ");
 
-    err = cudaDestroyTextureObject(_dog_3d_tex_point);
+    err = hipDestroyTextureObject(_dog_3d_tex_point);
     POP_CUDA_FATAL_TEST(err, "Could not destroy DoG texture: ");
 
-    err = cudaDestroySurfaceObject(_dog_3d_surf);
+    err = hipDestroySurfaceObject(_dog_3d_surf);
     POP_CUDA_FATAL_TEST(err, "Could not destroy DoG surface: ");
 }
 

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -19,7 +20,7 @@
  */
 __global__
 void ext_desc_grid( const int           octave,
-                    cudaTextureObject_t layer_tex );
+                    hipTextureObject_t layer_tex );
 
 namespace popsift
 {
@@ -38,9 +39,7 @@ inline static bool start_ext_desc_grid( const int octave, Octave& oct_obj )
     block.y = 4;
     block.z = 4;
 
-    ext_desc_grid
-        <<<grid,block,0,oct_obj.getStream()>>>
-        ( octave,
+    hipLaunchKernelGGL(ext_desc_grid, dim3(grid), dim3(block), 0, oct_obj.getStream(),  octave,
           oct_obj.getDataTexPoint( ) );
 
     POP_SYNC_CHK;

@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016, Simula Research Laboratory
  *
@@ -7,7 +8,7 @@
  */
 #pragma once
 
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 #include <typeinfo>
 
 #include "assist.h"

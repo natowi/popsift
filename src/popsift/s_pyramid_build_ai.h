@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2017, Simula Research Laboratory
  *
@@ -12,23 +13,23 @@ namespace gauss {
 namespace absoluteSourceInterpolated {
 
 __global__
-void horiz( cudaTextureObject_t src_linear_tex,
-            cudaSurfaceObject_t dst_data,
+void horiz( hipTextureObject_t src_linear_tex,
+            hipSurfaceObject_t dst_data,
             const int           dst_level );
 
 __global__
-void vert( cudaTextureObject_t src_linear_tex,
-           cudaSurfaceObject_t dst_data,
+void vert( hipTextureObject_t src_linear_tex,
+           hipSurfaceObject_t dst_data,
            const int           dst_level );
 
 __global__
-void vert_abs0( cudaTextureObject_t src_linear_tex,
-           cudaSurfaceObject_t dst_data,
+void vert_abs0( hipTextureObject_t src_linear_tex,
+           hipSurfaceObject_t dst_data,
            const int           dst_level );
 
 __global__
-void vert_all_abs0( cudaTextureObject_t src_linear_tex,
-                    cudaSurfaceObject_t dst_data,
+void vert_all_abs0( hipTextureObject_t src_linear_tex,
+                    hipSurfaceObject_t dst_data,
                     const int           start_level,
                     const int           max_level );
 

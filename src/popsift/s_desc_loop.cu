@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -20,7 +21,7 @@ __device__ static inline
 void ext_desc_loop_sub( const float         ang,
                         const Extremum*     ext,
                         float* __restrict__ features,
-                        cudaTextureObject_t layer_tex,
+                        hipTextureObject_t layer_tex,
                         const int           width,
                         const int           height )
 {
@@ -139,7 +140,7 @@ void ext_desc_loop_sub( const float         ang,
 
 __global__
 void ext_desc_loop( const int           octave,
-                    cudaTextureObject_t layer_tex,
+                    hipTextureObject_t layer_tex,
                     const int           w,
                     const int           h )
 {

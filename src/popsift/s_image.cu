@@ -132,8 +132,8 @@ void Image::allocate( int w, int h )
 
 void Image::destroyTexture( )
 {
-    cudaError_t err;
-    err = cudaDestroyTextureObject( _input_image_tex );
+    hipError_t err;
+    err = hipDestroyTextureObject( _input_image_tex );
     POP_CUDA_FATAL_TEST( err, "Could not destroy texture object: " );
 }
 
@@ -141,19 +141,19 @@ void Image::createTexture( )
 {
     /* initializing texture for upscaling
      */
-    memset( &_input_image_texDesc, 0, sizeof(cudaTextureDesc) );
+    memset( &_input_image_texDesc, 0, sizeof(hipTextureDesc) );
     _input_image_texDesc.normalizedCoords = 1; // address 0..1 instead of 0..width/height
-    _input_image_texDesc.addressMode[0]   = cudaAddressModeClamp;
-    _input_image_texDesc.addressMode[1]   = cudaAddressModeClamp;
-    _input_image_texDesc.addressMode[2]   = cudaAddressModeClamp;
-    _input_image_texDesc.readMode         = cudaReadModeNormalizedFloat; // automatic conversion from uchar to float
-    _input_image_texDesc.filterMode       = cudaFilterModeLinear; // bilinear interpolation
-    // _input_image_texDesc.filterMode       = cudaFilterModePoint; // nearest neighbour mode
+    _input_image_texDesc.addressMode[0]   = hipAddressModeClamp;
+    _input_image_texDesc.addressMode[1]   = hipAddressModeClamp;
+    _input_image_texDesc.addressMode[2]   = hipAddressModeClamp;
+    _input_image_texDesc.readMode         = hipReadModeNormalizedFloat; // automatic conversion from uchar to float
+    _input_image_texDesc.filterMode       = hipFilterModeLinear; // bilinear interpolation
+    // _input_image_texDesc.filterMode       = hipFilterModePoint; // nearest neighbour mode
 
-    memset( &_input_image_resDesc, 0, sizeof(cudaResourceDesc) );
-    _input_image_resDesc.resType                  = cudaResourceTypePitch2D;
+    memset( &_input_image_resDesc, 0, sizeof(hipResourceDesc) );
+    _input_image_resDesc.resType                  = hipResourceTypePitch2D;
     _input_image_resDesc.res.pitch2D.devPtr       = _input_image_d.data;
-    _input_image_resDesc.res.pitch2D.desc.f       = cudaChannelFormatKindUnsigned;
+    _input_image_resDesc.res.pitch2D.desc.f       = hipChannelFormatKindUnsigned;
     _input_image_resDesc.res.pitch2D.desc.x       = 8; // sizeof(uint8_t)*8
     _input_image_resDesc.res.pitch2D.desc.y       = 0;
     _input_image_resDesc.res.pitch2D.desc.z       = 0;
@@ -163,8 +163,8 @@ void Image::createTexture( )
     _input_image_resDesc.res.pitch2D.width        = _input_image_d.getCols();
     _input_image_resDesc.res.pitch2D.height       = _input_image_d.getRows();
 
-    cudaError_t err;
-    err = cudaCreateTextureObject( &_input_image_tex, &_input_image_resDesc, &_input_image_texDesc, 0 );
+    hipError_t err;
+    err = hipCreateTextureObject( &_input_image_tex, &_input_image_resDesc, &_input_image_texDesc, 0 );
     POP_CUDA_FATAL_TEST( err, "Could not create texture object: " );
 }
 
@@ -256,8 +256,8 @@ void ImageFloat::allocate( int w, int h )
 
 void ImageFloat::destroyTexture( )
 {
-    cudaError_t err;
-    err = cudaDestroyTextureObject( _input_image_tex );
+    hipError_t err;
+    err = hipDestroyTextureObject( _input_image_tex );
     POP_CUDA_FATAL_TEST( err, "Could not destroy texture object: " );
 }
 
@@ -265,19 +265,19 @@ void ImageFloat::createTexture( )
 {
     /* initializing texture for upscaling
      */
-    memset( &_input_image_texDesc, 0, sizeof(cudaTextureDesc) );
+    memset( &_input_image_texDesc, 0, sizeof(hipTextureDesc) );
     _input_image_texDesc.normalizedCoords = 1; // address 0..1 instead of 0..width/height
-    _input_image_texDesc.addressMode[0]   = cudaAddressModeClamp;
-    _input_image_texDesc.addressMode[1]   = cudaAddressModeClamp;
-    _input_image_texDesc.addressMode[2]   = cudaAddressModeClamp;
-    _input_image_texDesc.readMode         = cudaReadModeElementType; // no conversion
-    _input_image_texDesc.filterMode       = cudaFilterModeLinear; // bilinear interpolation
-    // _input_image_texDesc.filterMode       = cudaFilterModePoint; // nearest neighbour mode
+    _input_image_texDesc.addressMode[0]   = hipAddressModeClamp;
+    _input_image_texDesc.addressMode[1]   = hipAddressModeClamp;
+    _input_image_texDesc.addressMode[2]   = hipAddressModeClamp;
+    _input_image_texDesc.readMode         = hipReadModeElementType; // no conversion
+    _input_image_texDesc.filterMode       = hipFilterModeLinear; // bilinear interpolation
+    // _input_image_texDesc.filterMode       = hipFilterModePoint; // nearest neighbour mode
 
-    memset( &_input_image_resDesc, 0, sizeof(cudaResourceDesc) );
-    _input_image_resDesc.resType                  = cudaResourceTypePitch2D;
+    memset( &_input_image_resDesc, 0, sizeof(hipResourceDesc) );
+    _input_image_resDesc.resType                  = hipResourceTypePitch2D;
     _input_image_resDesc.res.pitch2D.devPtr       = _input_image_d.data;
-    _input_image_resDesc.res.pitch2D.desc.f       = cudaChannelFormatKindFloat;
+    _input_image_resDesc.res.pitch2D.desc.f       = hipChannelFormatKindFloat;
     _input_image_resDesc.res.pitch2D.desc.x       = 32; // sizeof(float)*8
     _input_image_resDesc.res.pitch2D.desc.y       = 0;
     _input_image_resDesc.res.pitch2D.desc.z       = 0;
@@ -287,8 +287,8 @@ void ImageFloat::createTexture( )
     _input_image_resDesc.res.pitch2D.width        = _input_image_d.getCols();
     _input_image_resDesc.res.pitch2D.height       = _input_image_d.getRows();
 
-    cudaError_t err;
-    err = cudaCreateTextureObject( &_input_image_tex, &_input_image_resDesc, &_input_image_texDesc, 0 );
+    hipError_t err;
+    err = hipCreateTextureObject( &_input_image_tex, &_input_image_resDesc, &_input_image_texDesc, 0 );
     POP_CUDA_FATAL_TEST( err, "Could not create texture object: " );
 }
 

@@ -39,13 +39,13 @@ Config::Config( )
     , _print_gauss_tables( false )
 {
     int            currentDev;
-    cudaDeviceProp currentProp;
-    cudaError_t    err;
+    hipDeviceProp_t currentProp;
+    hipError_t    err;
 
-    err = cudaGetDevice( &currentDev );
+    err = hipGetDevice( &currentDev );
     POP_CUDA_FATAL_TEST( err, "Could not get current device ID" );
 
-    err = cudaGetDeviceProperties( &currentProp, currentDev );
+    err = hipGetDeviceProperties( &currentProp, currentDev );
     POP_CUDA_FATAL_TEST( err, "Could not get current device properties" );
 }
 

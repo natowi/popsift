@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016-2017, Simula Research Laboratory
  *
@@ -83,29 +84,29 @@ void FeaturesHost::reset( int num_ext, int num_ori )
 
 void FeaturesHost::pin( )
 {
-    cudaError_t err;
-    err = cudaHostRegister( _ext, getFeatureCount() * sizeof(Feature), 0 );
-    if( err != cudaSuccess ) {
+    hipError_t err;
+    err = hipHostRegister( _ext, getFeatureCount() * sizeof(Feature), 0 );
+    if( err != hipSuccess ) {
         cerr << __FILE__ << ":" << __LINE__ << " Runtime warning:" << endl
              << "    Failed to register feature memory in CUDA." << endl
              << "    Features count: " << getFeatureCount() << endl
              << "    Memory size requested: " << getFeatureCount() * sizeof(Feature) << endl
-             << "    " << cudaGetErrorString(err) << endl;
+             << "    " << hipGetErrorString(err) << endl;
     }
-    err = cudaHostRegister( _ori, getDescriptorCount() * sizeof(Descriptor), 0 );
-    if( err != cudaSuccess ) {
+    err = hipHostRegister( _ori, getDescriptorCount() * sizeof(Descriptor), 0 );
+    if( err != hipSuccess ) {
         cerr << __FILE__ << ":" << __LINE__ << " Runtime warning:" << endl
              << "    Failed to register descriptor memory in CUDA." << endl
              << "    Descriptors count: " << getDescriptorCount() << endl
              << "    Memory size requested: " << getDescriptorCount() * sizeof(Descriptor) << endl
-             << "    " << cudaGetErrorString(err) << endl;
+             << "    " << hipGetErrorString(err) << endl;
     }
 }
 
 void FeaturesHost::unpin( )
 {
-    cudaHostUnregister( _ext );
-    cudaHostUnregister( _ori );
+    hipHostUnregister( _ext );
+    hipHostUnregister( _ori );
 }
 
 void FeaturesHost::print( std::ostream& ostr, bool write_as_uchar ) const
@@ -141,16 +142,16 @@ FeaturesDev::FeaturesDev( int num_ext, int num_ori )
 
 FeaturesDev::~FeaturesDev( )
 {
-    cudaFree( _ext );
-    cudaFree( _ori );
-    cudaFree( _rev );
+    hipFree( _ext );
+    hipFree( _ori );
+    hipFree( _rev );
 }
 
 void FeaturesDev::reset( int num_ext, int num_ori )
 {
-    if( _ext != 0 ) { cudaFree( _ext ); _ext = 0; }
-    if( _ori != 0 ) { cudaFree( _ori ); _ori = 0; }
-    if( _rev != 0 ) { cudaFree( _rev ); _rev = 0; }
+    if( _ext != 0 ) { hipFree( _ext ); _ext = 0; }
+    if( _ori != 0 ) { hipFree( _ori ); _ori = 0; }
+    if( _rev != 0 ) { hipFree( _rev ); _rev = 0; }
 
     _ext = popsift::cuda::malloc_devT<Feature>   ( num_ext, __FILE__, __LINE__ );
     _ori = popsift::cuda::malloc_devT<Descriptor>( num_ori, __FILE__, __LINE__ );
@@ -278,15 +279,11 @@ void FeaturesDev::match( FeaturesDev* other )
     block.y = 1;
     block.z = 1;
 
-    compute_distance
-        <<<grid,block>>>
-        ( match_matrix, getDescriptors(), l_len, other->getDescriptors(), r_len );
+    hipLaunchKernelGGL(compute_distance, dim3(grid), dim3(block), 0, 0,  match_matrix, getDescriptors(), l_len, other->getDescriptors(), r_len );
 
     POP_SYNC_CHK;
 
-    show_distance
-        <<<1,32>>>
-        ( match_matrix,
+    hipLaunchKernelGGL(show_distance, dim3(1), dim3(32), 0, 0,  match_matrix,
           getFeatures(),
           getDescriptors(),
           getReverseMap(),
@@ -298,7 +295,7 @@ void FeaturesDev::match( FeaturesDev* other )
 
     POP_SYNC_CHK;
 
-    cudaFree( match_matrix );
+    hipFree( match_matrix );
 }
 
 /*************************************************************

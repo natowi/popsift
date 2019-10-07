@@ -75,7 +75,7 @@ class Pyramid
     int*         _d_extrema_num_blocks;
 
     /* the download of converted descriptors should be asynchronous */
-    cudaStream_t _download_stream;
+    hipStream_t _download_stream;
 
 public:
     enum GaussTableChoice {
@@ -118,29 +118,29 @@ private:
     inline void horiz_from_input_image( const Config&    conf,
                                         ImageBase*       base,
 					                    int              octave,
-					                    cudaStream_t     stream );
+					                    hipStream_t     stream );
     inline void horiz_level_from_input_image( const Config&    conf,
                                               ImageBase*       base,
 					                          int              octave,
                                               int              level,
-					                          cudaStream_t     stream );
+					                          hipStream_t     stream );
     inline void horiz_all_from_input_image( const Config&    conf,
                                             ImageBase*       base,
                                             int              octave,
                                             int              startlevel,
                                             int              maxlevel,
-                                            cudaStream_t     stream );
-    inline void downscale_from_prev_octave( int octave, cudaStream_t stream, Config::SiftMode mode );
-    inline void horiz_from_prev_level( int octave, int level, cudaStream_t stream, GaussTableChoice useInterpolatedGauss );
-    inline void vert_from_interm( int octave, int level, cudaStream_t stream, GaussTableChoice useInterpolatedGauss );
+                                            hipStream_t     stream );
+    inline void downscale_from_prev_octave( int octave, hipStream_t stream, Config::SiftMode mode );
+    inline void horiz_from_prev_level( int octave, int level, hipStream_t stream, GaussTableChoice useInterpolatedGauss );
+    inline void vert_from_interm( int octave, int level, hipStream_t stream, GaussTableChoice useInterpolatedGauss );
     inline void vert_all_from_interm( int octave,
                                       int start_level,
                                       int max_level,
-                                      cudaStream_t stream,
+                                      hipStream_t stream,
                                       GaussTableChoice useInterpolatedGauss );
-    inline void dogs_from_blurred( int octave, int max_level, cudaStream_t stream );
+    inline void dogs_from_blurred( int octave, int max_level, hipStream_t stream );
 
-    void make_octave( const Config& conf, ImageBase* base, Octave& oct_obj, cudaStream_t stream, bool isOctaveZero );
+    void make_octave( const Config& conf, ImageBase* base, Octave& oct_obj, hipStream_t stream, bool isOctaveZero );
 
     void reset_extrema_mgmt( );
     void build_pyramid( const Config& conf, ImageBase* base );
@@ -156,9 +156,9 @@ private:
     void debug_out_floats_t( float* data, uint32_t pitch, uint32_t height );
 
     void readDescCountersFromDevice( );
-    void readDescCountersFromDevice( cudaStream_t s );
+    void readDescCountersFromDevice( hipStream_t s );
     void writeDescCountersToDevice( );
-    void writeDescCountersToDevice( cudaStream_t s );
+    void writeDescCountersToDevice( hipStream_t s );
     int* getNumberOfBlocks( int octave );
     void writeDescriptor( const Config& conf, std::ostream& ostr, FeaturesHost* features, bool really, bool with_orientation );
 

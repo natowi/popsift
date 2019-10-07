@@ -1,3 +1,4 @@
+#include "hip/hip_runtime.h"
 /*
  * Copyright 2016, Simula Research Laboratory
  *
@@ -236,22 +237,20 @@ void init_filter( const Config& conf,
         h_gauss.dd.computeBlurTable( &h_gauss );
     }
 
-    cudaError_t err;
-    err = cudaMemcpyToSymbol( d_gauss,
+    hipError_t err;
+    err = hipMemcpyToSymbol(HIP_SYMBOL(d_gauss),
                               &h_gauss,
                               sizeof(GaussInfo),
                               0,
-                              cudaMemcpyHostToDevice );
-    POP_CUDA_FATAL_TEST( err, "cudaMemcpyToSymbol failed for Gauss kernel initialization: " );
+                              hipMemcpyHostToDevice );
+    POP_CUDA_FATAL_TEST( err, "hipMemcpyToSymbol failed for Gauss kernel initialization: " );
 
     if( conf.ifPrintGaussTables() ) {
-        print_gauss_filter_symbol
-            <<<1,1>>>
-            ( 10 );
+        hipLaunchKernelGGL(print_gauss_filter_symbol, dim3(1), dim3(1), 0, 0,  10 );
 
         POP_SYNC_CHK;
 
-        err = cudaGetLastError();
+        err = hipGetLastError();
         POP_CUDA_FATAL_TEST( err, "Gauss Symbol info failed: " );
     }
 }

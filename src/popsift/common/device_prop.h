@@ -8,14 +8,14 @@
 #pragma once
 
 #include <vector>
-#include <cuda_runtime.h>
+#include <hip/hip_runtime.h>
 
 namespace popsift { namespace cuda {
 
 class device_prop_t
 {
     int _num_devices;
-    std::vector<cudaDeviceProp*> _properties;
+    std::vector<hipDeviceProp_t*> _properties;
 public:
     device_prop_t( );
     ~device_prop_t( );
