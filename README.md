@@ -19,6 +19,10 @@ https://gitlab.cern.ch/lhcb/Allen/blob/master/CMakeLists.txt
 
 https://cmake.org/pipermail/cmake/2017-October/066492.html
 
+http://cmake.3232098.n2.nabble.com/Change-compiler-for-certain-files-in-the-project-td7596509.html
+
+
+
 [ ] build
 
 PopSift
