@@ -1,8 +1,6 @@
 # CMake below 3.4 does not work with CUDA separable compilation at all
 cmake_minimum_required(VERSION 3.4)
 
-# cmake_minimum_required(VERSION 2.8.3)
-
 # HiP requires rocm
 # if(NOT DEFINED HIP_PATH)
 #     if(NOT DEFINED ENV{HIP_PATH})
