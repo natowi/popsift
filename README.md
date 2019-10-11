@@ -40,6 +40,8 @@ Boost >= 1.55 ([atomic, chrono, date-time, system, thread]-dev)
 CUDA >= 7.0
 DevIL (libdevil-dev) (only required for the application)
 
+HiP /opt/rocm/hip
+
 Build
 -----
 
