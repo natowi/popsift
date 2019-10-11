@@ -1,6 +1,11 @@
 # CMake below 3.4 does not work with CUDA separable compilation at all
 cmake_minimum_required(VERSION 3.4)
 
+# set(CMAKE_MODULE_PATH "/opt/rocm/hip/cmake" ${CMAKE_MODULE_PATH})
+# find_package(HIP)
+# https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/2_Cookbook/12_cmake_hip_add_executable
+# requires rocm
+
 project(PopSift VERSION 1.0.0)
 
 OPTION(PopSift_BUILD_EXAMPLES "Build PopSift applications."  ON)
