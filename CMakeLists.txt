@@ -10,6 +10,7 @@ cmake_minimum_required(VERSION 3.4)
 #     endif()
 # endif()
 # set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+# ! allready used
 
 # project(12_cmake)
 
@@ -20,6 +21,7 @@ cmake_minimum_required(VERSION 3.4)
 #     message(FATAL_ERROR "Could not find HIP. Ensure that HIP is either installed in /opt/rocm/hip or the variable HIP_PATH is set to point to the right location.")
 # endif()
 # https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/2_Cookbook/12_cmake_hip_add_executable
+# cuda line 70+
 
 project(PopSift VERSION 1.0.0)
 
