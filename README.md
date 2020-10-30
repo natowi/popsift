@@ -5,6 +5,8 @@ HiP porting wip
 
 [ ] add Hip to cmake, useful links:
 
+https://github.com/ROCm-Developer-Tools/HIPIFY#windows
+
 https://github.com/ROCm-Developer-Tools/HIP/blob/master/docs/markdown/hip_porting_guide.md#porting-a-new-cuda-project%22
 
 https://github.com/ROCm-Developer-Tools/HIP/issues/231
